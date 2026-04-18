@@ -69,6 +69,8 @@ QuestLog/
 - This project uses a small local server for Steam import because Steam requests are not reliable from a plain local HTML file.
 - That is fine for a small personal project, but it is not secure enough for a production app.
 - RAWG asks for attribution when you use their data and images, so the app includes a source credit in the interface.
+- Code in this repository is licensed under the MIT License in [LICENSE](LICENSE).
+- Branding assets are covered by [LICENSE-LOGO-CC-BY-4.0.txt](LICENSE-LOGO-CC-BY-4.0.txt).
 
 ## GitHub Publishing Notes
 
