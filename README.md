@@ -36,11 +36,11 @@ QuestLog/
 |   `-- preload.js
 |-- scripts/
 |   |-- Launch-QuestLog-Desktop.cmd
-|   |-- Prepare-Release.ps1
 |   |-- Start-QuestLog.ps1
 |   `-- Start-QuestLog-Desktop.ps1
 |-- CHANGELOG.md
 |-- index.html
+|-- package-lock.json
 |-- package.json
 |-- README.md
 |-- server.js
@@ -57,8 +57,9 @@ QuestLog/
 - `js/app.js` handles RAWG lookup, Steam import requests, filtering, editing, backups, theme/view preferences, and saving/loading from `localStorage`.
 - `server.js` serves the app on `localhost` and proxies Steam API requests so Steam import works in the browser.
 - `desktop/main.js` and `desktop/preload.js` provide the Electron desktop shell.
-- `scripts/` contains the browser launcher, desktop launcher, and release-prep helpers.
+- `scripts/` contains the browser and desktop launcher helpers.
 - `package.json` adds the browser and desktop startup commands.
+- `package-lock.json` keeps installs reproducible across machines.
 - `README.md` explains the app and folder structure so it is easier to understand later.
 - `CHANGELOG.md` tracks shipped versions and mirrors the GitHub release notes cadence.
 
