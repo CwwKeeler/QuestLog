@@ -1,0 +1,9 @@
+{
+  "name": "questlog",
+  "version": "1.0.0",
+  "private": true,
+  "description": "QuestLog local server for the browser app and Steam proxy routes.",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

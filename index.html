@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuestLog</title>
+  <link rel="icon" type="image/png" href="assets/brand/questlog_q_icon_transparent.png">
+  <link rel="apple-touch-icon" href="assets/brand/questlog_q_icon_transparent.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="hero">
+      <div class="hero__brand">
+        <div class="hero__brand-lockup">
+          <img
+            class="hero__brand-icon"
+            src="assets/brand/questlog_q_icon_transparent.png"
+            alt="QuestLog icon"
+            width="80"
+            height="80"
+          >
+          <div class="hero__brand-copy">
+            <p class="eyebrow">QuestLog</p>
+            <p class="hero__tagline">Track your journey</p>
+          </div>
+        </div>
+        <img
+          class="hero__brand-logo"
+          src="assets/brand/questlog_logo_transparent.png"
+          alt="QuestLog logo"
+          width="1143"
+          height="251"
+        >
+      </div>
+
+      <div class="hero__copy">
+        <h1>Build a personal game library with smart tracking, imports, and notes.</h1>
+        <p class="hero__text">
+          QuestLog keeps your backlog, active games, finished runs, and Steam imports in one place.
+          You can search, sort, filter, favorite, edit, and back everything up locally.
+        </p>
+
+        <div class="hero__actions">
+          <button type="button" id="open-settings-button" class="button button--secondary">Open Settings</button>
+          <button type="button" id="open-add-modal-button" class="button button--primary">Quick Add</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="app-layout">
+      <section class="stats-grid" id="stats-grid" aria-live="polite"></section>
+
+      <section class="panel panel--wide">
+        <div class="section-header">
+          <div>
+            <h2>Your Games</h2>
+            <p class="section-text">Search, sort, and filter your library however you like.</p>
+          </div>
+        </div>
+
+        <div class="toolbar toolbar--top">
+          <div class="field-group field-group--grow">
+            <label for="search-input">Search</label>
+            <input id="search-input" type="search" placeholder="Search title, tags, collections, or notes">
+          </div>
+
+          <div class="field-group">
+            <label for="sort-input">Sort</label>
+            <select id="sort-input">
+              <option value="recent">Recently Added</option>
+              <option value="title-asc">Title A-Z</option>
+              <option value="title-desc">Title Z-A</option>
+              <option value="rating-desc">Highest Rating</option>
+              <option value="rating-asc">Lowest Rating</option>
+              <option value="playtime-desc">Most Playtime</option>
+              <option value="release-desc">Newest Release</option>
+              <option value="release-asc">Oldest Release</option>
+            </select>
+          </div>
+
+          <div class="field-group">
+            <label for="filter-status">Status</label>
+            <select id="filter-status">
+              <option value="All">All</option>
+              <option value="Backlog">Backlog</option>
+              <option value="Playing">Playing</option>
+              <option value="Finished">Finished</option>
+              <option value="Paused">Paused</option>
+              <option value="Dropped">Dropped</option>
+            </select>
+          </div>
+
+          <div class="field-group">
+            <label for="filter-platform">Platform</label>
+            <select id="filter-platform">
+              <option value="All">All Platforms</option>
+            </select>
+          </div>
+
+          <div class="field-group">
+            <label for="filter-collection">Collection</label>
+            <select id="filter-collection">
+              <option value="All">All Collections</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="toolbar toolbar--bottom">
+          <div class="toggle-row">
+            <button type="button" id="favorites-filter-button" class="chip-button">Favorites Only</button>
+            <button type="button" id="clear-filters" class="button button--secondary">Clear Filters</button>
+          </div>
+
+          <div class="toggle-row">
+            <span class="toolbar-label">View</span>
+            <button type="button" class="chip-button view-toggle" data-view="grid">Grid</button>
+            <button type="button" class="chip-button view-toggle" data-view="compact">Compact</button>
+          </div>
+        </div>
+
+        <div class="tag-filter-block">
+          <div class="tag-filter-header">
+            <div>
+              <h3>Tag Filters</h3>
+              <p class="helper-text">Toggle RAWG tags or your own custom tags to narrow the list.</p>
+            </div>
+            <button type="button" id="tag-filter-toggle" class="chip-button hidden" aria-expanded="false">Show All</button>
+          </div>
+          <p id="tag-filter-summary" class="helper-text hidden"></p>
+          <div id="tag-filter-list" class="tag-filter-list"></div>
+        </div>
+
+        <p id="empty-state" class="empty-state">
+          No games added yet. Add one manually or import your Steam library from Settings.
+        </p>
+
+        <ul id="game-list" class="game-grid" aria-live="polite"></ul>
+
+        <p class="data-credit">
+          Covers and metadata may come from
+          <a href="https://rawg.io/" target="_blank" rel="noreferrer">RAWG</a>
+          and
+          <a href="https://store.steampowered.com/" target="_blank" rel="noreferrer">Steam</a>.
+        </p>
+      </section>
+
+      <section class="panel">
+        <h2>Add a Game</h2>
+
+        <form id="game-form" class="game-form">
+          <div class="form-group">
+            <label for="title">Game title</label>
+            <input id="title" name="title" type="text" placeholder="Example: Hollow Knight" maxlength="100" required>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="status">Status</label>
+              <select id="status" name="status">
+                <option value="Backlog">Backlog</option>
+                <option value="Playing">Playing</option>
+                <option value="Finished">Finished</option>
+                <option value="Paused">Paused</option>
+                <option value="Dropped">Dropped</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="custom-tags">Custom tags (optional)</label>
+            <input id="custom-tags" name="custom-tags" type="text" placeholder="Example: Cozy, Co-op, Soulslike">
+          </div>
+
+          <button type="submit" class="button button--primary">Add to QuestLog</button>
+        </form>
+
+        <p id="form-feedback" class="helper-text" aria-live="polite">
+          Enter a title and QuestLog will try to pull Metacritic and playtime estimates before saving.
+        </p>
+      </section>
+    </main>
+  </div>
+
+  <div id="settings-modal" class="modal hidden" aria-hidden="true">
+    <div class="modal__backdrop" data-close-settings></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <div class="modal__header">
+        <div>
+          <p class="eyebrow">QuestLog Settings</p>
+          <h2 id="settings-title">Connections And Preferences</h2>
+        </div>
+        <button type="button" id="close-settings-button" class="button button--secondary">Close</button>
+      </div>
+
+      <div class="modal__content">
+        <section class="panel panel--nested">
+          <div class="panel-header">
+            <div>
+              <h2>RAWG</h2>
+              <p class="section-text">Use RAWG for cover art, metadata, genres, and tags.</p>
+            </div>
+          </div>
+
+          <form id="api-form" class="game-form">
+            <div class="form-group">
+              <label for="api-key">RAWG API key</label>
+              <input id="api-key" name="api-key" type="text" placeholder="Paste your RAWG key" autocomplete="off">
+            </div>
+            <button type="submit" class="button button--secondary">Save RAWG Key</button>
+          </form>
+
+          <p id="api-feedback" class="helper-text"></p>
+          <p class="helper-text">
+            Need a key? Visit <a href="https://rawg.io/apidocs" target="_blank" rel="noreferrer">RAWG API docs</a>.
+          </p>
+        </section>
+
+        <section class="panel panel--nested">
+          <div class="panel-header">
+            <div>
+              <h2>Steam</h2>
+              <p class="section-text">Import your library and suggest statuses using playtime plus achievements.</p>
+            </div>
+          </div>
+
+          <form id="steam-form" class="game-form">
+            <div class="form-group">
+              <label for="steam-id">Steam ID64</label>
+              <input id="steam-id" name="steam-id" type="text" placeholder="Example: 76561198000000000" inputmode="numeric" autocomplete="off">
+            </div>
+
+            <div class="form-group">
+              <label for="steam-api-key">Steam Web API key</label>
+              <input id="steam-api-key" name="steam-api-key" type="text" placeholder="Paste your Steam API key" autocomplete="off">
+            </div>
+
+            <div class="button-row">
+              <button type="submit" class="button button--secondary">Save Steam Settings</button>
+              <button type="button" id="steam-import-button" class="button button--primary">Import My Library</button>
+            </div>
+          </form>
+
+          <p id="steam-feedback" class="helper-text"></p>
+          <div id="steam-import-progress" class="steam-progress hidden" aria-live="polite" aria-hidden="true">
+            <div class="steam-progress__meta">
+              <span id="steam-import-progress-label">Preparing Steam import...</span>
+              <span id="steam-import-progress-count">0%</span>
+            </div>
+            <progress id="steam-import-progress-bar" class="steam-progress__bar" max="100" value="0">0%</progress>
+          </div>
+          <p class="helper-text">
+            Need a key? Visit Steam's
+            <a href="https://steamcommunity.com/dev/apikey" target="_blank" rel="noreferrer">Web API key page</a>.
+          </p>
+        </section>
+
+        <section class="panel panel--nested">
+          <div class="panel-header">
+            <div>
+              <h2>Appearance</h2>
+              <p class="section-text">Pick a theme and default browsing style.</p>
+            </div>
+          </div>
+
+          <div class="button-row">
+            <button type="button" class="chip-button theme-toggle" data-theme="dark">Dark</button>
+            <button type="button" class="chip-button theme-toggle" data-theme="light">Light</button>
+          </div>
+        </section>
+
+        <section class="panel panel--nested">
+          <div class="panel-header">
+            <div>
+              <h2>Backups</h2>
+              <p class="section-text">Export your library to JSON or import a previous backup.</p>
+            </div>
+          </div>
+
+          <div class="button-row">
+            <button type="button" id="export-library-button" class="button button--secondary">Export JSON Backup</button>
+            <button type="button" id="import-library-button" class="button button--secondary">Import JSON Backup</button>
+            <button type="button" id="nuke-library-button" class="button button--danger">Nuke Library</button>
+          </div>
+
+          <input id="import-file-input" type="file" accept=".json,application/json" class="visually-hidden">
+          <p id="backup-feedback" class="helper-text">Backups include your library, notes, tags, favorites, and settings-related game data.</p>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div id="game-modal" class="modal hidden" aria-hidden="true">
+    <div class="modal__backdrop" data-close-game-modal></div>
+    <div class="modal__dialog modal__dialog--medium" role="dialog" aria-modal="true" aria-labelledby="game-modal-title">
+      <div class="modal__header">
+        <div>
+          <p class="eyebrow">Game Details</p>
+          <h2 id="game-modal-title">Edit Game</h2>
+        </div>
+        <button type="button" id="close-game-modal-button" class="button button--secondary">Close</button>
+      </div>
+
+      <div class="modal__content">
+        <form id="game-edit-form" class="game-form">
+          <input type="hidden" id="edit-game-id">
+
+          <div class="form-group">
+            <label for="edit-title">Title</label>
+            <input id="edit-title" type="text" maxlength="120" required>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="edit-status">Status</label>
+              <select id="edit-status">
+                <option value="Backlog">Backlog</option>
+                <option value="Playing">Playing</option>
+                <option value="Finished">Finished</option>
+                <option value="Paused">Paused</option>
+                <option value="Dropped">Dropped</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="edit-rating">Metacritic Score</label>
+              <input id="edit-rating" type="number" min="0" max="100" value="0" readonly>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="edit-tags">Custom tags</label>
+            <input id="edit-tags" type="text" placeholder="Example: Cozy, Co-op, Soulslike">
+          </div>
+
+          <div class="form-group">
+            <label for="edit-collections">Collections</label>
+            <input id="edit-collections" type="text" placeholder="Example: Halloween, Co-op Night, JRPGs">
+          </div>
+
+          <div class="form-group">
+            <label for="edit-notes">Notes</label>
+            <textarea id="edit-notes" rows="5" placeholder="Write thoughts, goals, or a mini journal entry."></textarea>
+          </div>
+
+          <div class="checkbox-row">
+            <label class="checkbox-label">
+              <input id="edit-favorite" type="checkbox">
+              <span>Favorite</span>
+            </label>
+            <label class="checkbox-label">
+              <input id="edit-lock-status" type="checkbox">
+              <span>Lock status from future Steam imports</span>
+            </label>
+          </div>
+
+          <div id="game-modal-summary" class="info-card"></div>
+
+          <div class="button-row">
+            <button type="submit" class="button button--primary">Save Changes</button>
+            <button type="button" id="delete-from-modal-button" class="button button--danger">Delete Game</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
