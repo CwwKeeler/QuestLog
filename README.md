@@ -34,13 +34,16 @@ QuestLog/
 |-- desktop/
 |   |-- main.js
 |   `-- preload.js
+|-- scripts/
+|   |-- Launch-QuestLog-Desktop.cmd
+|   |-- Prepare-Release.ps1
+|   |-- Start-QuestLog.ps1
+|   `-- Start-QuestLog-Desktop.ps1
 |-- CHANGELOG.md
 |-- index.html
-|-- Launch-QuestLog-Desktop.cmd
 |-- package.json
 |-- README.md
 |-- server.js
-|-- Start-QuestLog-Desktop.ps1
 |-- css/
 |   `-- styles.css
 `-- js/
@@ -54,6 +57,7 @@ QuestLog/
 - `js/app.js` handles RAWG lookup, Steam import requests, filtering, editing, backups, theme/view preferences, and saving/loading from `localStorage`.
 - `server.js` serves the app on `localhost` and proxies Steam API requests so Steam import works in the browser.
 - `desktop/main.js` and `desktop/preload.js` provide the Electron desktop shell.
+- `scripts/` contains the browser launcher, desktop launcher, and release-prep helpers.
 - `package.json` adds the browser and desktop startup commands.
 - `README.md` explains the app and folder structure so it is easier to understand later.
 - `CHANGELOG.md` tracks shipped versions and mirrors the GitHub release notes cadence.
@@ -68,8 +72,8 @@ QuestLog/
 
 ### PowerShell launcher
 
-- Run `.\Start-QuestLog.ps1` to start QuestLog and mirror server output into a timestamped file inside `logs/`.
-- If PowerShell blocks scripts on your machine, run `powershell -ExecutionPolicy Bypass -File .\Start-QuestLog.ps1`.
+- Run `.\scripts\Start-QuestLog.ps1` to start QuestLog and mirror server output into a timestamped file inside `logs/`.
+- If PowerShell blocks scripts on your machine, run `powershell -ExecutionPolicy Bypass -File .\scripts\Start-QuestLog.ps1`.
 
 ## How to Run It as a Desktop App
 
@@ -81,8 +85,8 @@ QuestLog/
 
 ### Desktop launchers
 
-- Run `.\Start-QuestLog-Desktop.ps1` to start the desktop app and mirror startup output into `logs/`.
-- Or double-click `Launch-QuestLog-Desktop.cmd` from File Explorer on Windows.
+- Run `.\scripts\Start-QuestLog-Desktop.ps1` to start the desktop app and mirror startup output into `logs/`.
+- Or double-click `scripts\Launch-QuestLog-Desktop.cmd` from File Explorer on Windows.
 
 ## How to Build the Windows Installer
 
