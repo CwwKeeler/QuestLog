@@ -84,6 +84,20 @@ QuestLog/
 - Run `.\Start-QuestLog-Desktop.ps1` to start the desktop app and mirror startup output into `logs/`.
 - Or double-click `Launch-QuestLog-Desktop.cmd` from File Explorer on Windows.
 
+## How to Build the Windows Installer
+
+1. Make sure Node.js is installed.
+2. Open this folder in a terminal.
+3. Run `npm install`.
+4. Run `npm run dist:win`.
+5. The packaged installer will be created inside `dist/`.
+
+### Installer notes
+
+- The Windows build uses Electron Builder with an NSIS installer target.
+- The installer creates a normal QuestLog desktop app with Start Menu and desktop shortcuts.
+- The packaged desktop build still uses the same local QuestLog UI and bundled local server behavior as the source-based desktop version.
+
 ## Notes About the API
 
 - This project uses the RAWG API from the browser, so the API key is stored in `localStorage` for simplicity.

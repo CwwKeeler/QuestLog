@@ -2,6 +2,34 @@
 
 All notable QuestLog release notes should be recorded here and mirrored in the matching GitHub Release entry.
 
+## [v1.0.1] - 2026-04-18
+
+### Highlights
+
+- Added the first packaged Windows installer for QuestLog.
+- Promoted the desktop shell into a proper desktop distribution target instead of a source-only test harness.
+
+### Added
+
+- Electron Builder packaging configuration for Windows NSIS installer builds.
+- Packaged desktop startup scripts and Windows icon support for the installer build.
+- A documented Windows installer workflow for local packaging.
+
+### Improved
+
+- Desktop packaging now reuses the same QuestLog UI and local server behavior as the browser version.
+- The app can now be distributed as a normal Windows install with Start Menu and desktop shortcuts.
+
+### Fixed
+
+- Local installer builds no longer stall on unnecessary dependency rebuilds.
+- Unsigned local packaging no longer blocks on the Windows code-sign editing step.
+
+### Notes
+
+- The generated installer for this version is `QuestLog-Setup-1.0.1.exe`.
+- A GitHub Release entry should use this changelog section as its release notes.
+
 ## [v1.0.0] - 2026-04-18
 
 ### Highlights

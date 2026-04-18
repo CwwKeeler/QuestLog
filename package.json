@@ -1,13 +1,58 @@
 {
     "name":  "questlog",
-    "version":  "1.0.0",
+    "version":  "1.0.1",
     "private":  true,
+    "main":  "desktop/main.js",
+    "author":  "QuestLog",
     "description":  "QuestLog local server for the browser app and Steam proxy routes.",
     "scripts":  {
                     "start":  "node server.js",
-                    "desktop-start":  "electron .\\desktop\\main.js"
+                    "desktop-start":  "electron .\\desktop\\main.js",
+                    "dist":  "electron-builder",
+                    "dist:win":  "electron-builder --win nsis"
                 },
     "devDependencies":  {
-                            "electron":  "^38.1.0"
-                        }
+                            "electron":  "^38.1.0",
+                            "electron-builder":  "^26.0.12"
+                        },
+    "build":  {
+                  "appId":  "com.questlog.desktop",
+                  "productName":  "QuestLog",
+                  "artifactName":  "${productName}-Setup-${version}.${ext}",
+                  "npmRebuild":  false,
+                  "directories":  {
+                                      "output":  "dist"
+                                  },
+                  "files":  [
+                                "assets/**/*",
+                                "css/**/*",
+                                "desktop/**/*",
+                                "js/**/*",
+                                "index.html",
+                                "package.json",
+                                "server.js"
+                            ],
+                  "extraMetadata":  {
+                                        "main":  "desktop/main.js"
+                                    },
+                  "win":  {
+                              "signAndEditExecutable":  false,
+                              "target":  [
+                                             {
+                                                 "target":  "nsis",
+                                                 "arch":  [
+                                                              "x64"
+                                                          ]
+                                             }
+                                         ],
+                              "icon":  "assets/brand/questlog_q_icon.ico"
+                          },
+                  "nsis":  {
+                               "oneClick":  false,
+                               "allowToChangeInstallationDirectory":  true,
+                               "createDesktopShortcut":  true,
+                               "createStartMenuShortcut":  true,
+                               "shortcutName":  "QuestLog"
+                           }
+              }
 }
