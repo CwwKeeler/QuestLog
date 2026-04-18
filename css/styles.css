@@ -236,6 +236,12 @@ textarea {
   margin-bottom: 1rem;
 }
 
+.library-summary {
+  margin: 0.45rem 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
 .sidebar-stack {
   display: grid;
   gap: 1.5rem;
@@ -478,8 +484,9 @@ textarea {
 .tag-filter-list {
   display: flex;
   flex-wrap: wrap;
+  align-content: flex-start;
   gap: 0.6rem;
-  max-height: 7.75rem;
+  max-height: 10rem;
   overflow: hidden;
 }
 
@@ -653,6 +660,11 @@ textarea {
   color: var(--muted);
   font-size: 0.92rem;
   line-height: 1.5;
+}
+
+.game-item__timestamp {
+  color: var(--muted);
+  font-size: 0.86rem;
 }
 
 .pill {
