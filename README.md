@@ -7,7 +7,7 @@ It can fetch game metadata and cover art from the RAWG API, and it can import yo
 
 ## Demo
 
-- [Watch the QuestLog demo video](assets/demo/questlog-demo.mp4)
+- [Watch the QuestLog demo video](https://youtu.be/6S6tBhGhd-k)
 - The demo shows the app running locally with the current game library, Steam import tools, filtering, and tracking workflow.
 
 ## Features
