@@ -1,7 +1,14 @@
 # QuestLog
 
+![QuestLog Logo](assets/brand/questlog_logo_transparent.png)
+
 QuestLog is a small beginner-friendly web app for tracking games you want to play, are currently playing, or have already finished.
 It can fetch game metadata and cover art from the RAWG API, and it can import your Steam library through a tiny local Node server.
+
+## Demo
+
+- [Watch the QuestLog demo video](assets/demo/questlog-demo.mp4)
+- The demo shows the app running locally with the current game library, Steam import tools, filtering, and tracking workflow.
 
 ## Features
 
@@ -20,6 +27,12 @@ It can fetch game metadata and cover art from the RAWG API, and it can import yo
 
 ```text
 QuestLog/
+|-- assets/
+|   |-- brand/
+|   |   |-- questlog_logo_transparent.png
+|   |   `-- questlog_q_icon_transparent.png
+|   `-- demo/
+|       `-- questlog-demo.mp4
 |-- index.html
 |-- package.json
 |-- README.md
