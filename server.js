@@ -21,34 +21,61 @@ const MIME_TYPES = {
   ".webp": "image/webp"
 };
 
-const server = http.createServer(async (request, response) => {
-  try {
-    const requestUrl = new URL(request.url, `http://${request.headers.host}`);
-    logMessage(`Incoming ${request.method} ${requestUrl.pathname}${formatSearchForLog(requestUrl)}`);
+function createQuestLogServer({ rootDir = ROOT_DIR } = {}) {
+  return http.createServer(async (request, response) => {
+    try {
+      const requestUrl = new URL(request.url, `http://${request.headers.host}`);
+      logMessage(`Incoming ${request.method} ${requestUrl.pathname}${formatSearchForLog(requestUrl)}`);
 
-    if (requestUrl.pathname.startsWith("/api/steam/")) {
-      await handleSteamProxy(requestUrl, response);
-      return;
+      if (requestUrl.pathname.startsWith("/api/steam/")) {
+        await handleSteamProxy(requestUrl, response);
+        return;
+      }
+
+      serveStaticFile(requestUrl.pathname, response, rootDir);
+    } catch (error) {
+      console.error("Server error:", error);
+      sendJson(response, 500, { error: "Internal server error." });
     }
+  });
+}
 
-    serveStaticFile(requestUrl.pathname, response);
-  } catch (error) {
-    console.error("Server error:", error);
-    sendJson(response, 500, { error: "Internal server error." });
-  }
-});
+function startQuestLogServer({
+  host = HOST,
+  port = PORT,
+  rootDir = ROOT_DIR,
+  openBrowserOnStart = process.env.QUESTLOG_NO_OPEN !== "1"
+} = {}) {
+  const server = createQuestLogServer({ rootDir });
 
-server.listen(PORT, HOST, () => {
-  const appUrl = `http://${HOST}:${PORT}`;
-  logMessage(`QuestLog is running at ${appUrl}`);
-  openBrowser(appUrl);
-});
+  return new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(port, host, () => {
+      server.off("error", reject);
+      const address = server.address();
+      const resolvedPort = typeof address === "object" && address ? address.port : port;
+      const appUrl = `http://${host}:${resolvedPort}`;
+      logMessage(`QuestLog is running at ${appUrl}`);
 
-function serveStaticFile(pathname, response) {
+      if (openBrowserOnStart) {
+        openBrowser(appUrl);
+      }
+
+      resolve({
+        server,
+        appUrl,
+        host,
+        port: resolvedPort
+      });
+    });
+  });
+}
+
+function serveStaticFile(pathname, response, rootDir) {
   const safePath = pathname === "/" ? "/index.html" : pathname;
-  const resolvedPath = path.normalize(path.join(ROOT_DIR, safePath));
+  const resolvedPath = path.normalize(path.join(rootDir, safePath));
 
-  if (!resolvedPath.startsWith(ROOT_DIR)) {
+  if (!resolvedPath.startsWith(rootDir)) {
     sendJson(response, 403, { error: "Forbidden" });
     return;
   }
@@ -77,7 +104,8 @@ async function handleSteamProxy(requestUrl, response) {
   const routeMap = {
     "/api/steam/owned-games": "https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/",
     "/api/steam/player-achievements": "https://api.steampowered.com/ISteamUserStats/GetPlayerAchievements/v1/",
-    "/api/steam/schema": "https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/"
+    "/api/steam/schema": "https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/",
+    "/api/steam/store-details": "https://store.steampowered.com/api/appdetails"
   };
 
   const targetUrl = routeMap[requestUrl.pathname];
@@ -188,3 +216,15 @@ function openBrowser(url) {
     }
   });
 }
+
+if (require.main === module) {
+  startQuestLogServer().catch((error) => {
+    console.error("Could not start QuestLog.", error);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = {
+  createQuestLogServer,
+  startQuestLogServer
+};

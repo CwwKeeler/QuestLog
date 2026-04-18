@@ -31,10 +31,16 @@ QuestLog/
 |   |-- brand/
 |   |   |-- questlog_logo_transparent.png
 |   |   `-- questlog_q_icon_transparent.png
+|-- desktop/
+|   |-- main.js
+|   `-- preload.js
+|-- CHANGELOG.md
 |-- index.html
+|-- Launch-QuestLog-Desktop.cmd
 |-- package.json
 |-- README.md
 |-- server.js
+|-- Start-QuestLog-Desktop.ps1
 |-- css/
 |   `-- styles.css
 `-- js/
@@ -47,8 +53,10 @@ QuestLog/
 - `css/styles.css` controls the layout, colors, spacing, card-based game shelf, and responsive design.
 - `js/app.js` handles RAWG lookup, Steam import requests, filtering, editing, backups, theme/view preferences, and saving/loading from `localStorage`.
 - `server.js` serves the app on `localhost` and proxies Steam API requests so Steam import works in the browser.
-- `package.json` adds the `npm start` command for running the local server.
+- `desktop/main.js` and `desktop/preload.js` provide the Electron desktop shell.
+- `package.json` adds the browser and desktop startup commands.
 - `README.md` explains the app and folder structure so it is easier to understand later.
+- `CHANGELOG.md` tracks shipped versions and mirrors the GitHub release notes cadence.
 
 ## How to Run It
 
@@ -62,6 +70,19 @@ QuestLog/
 
 - Run `.\Start-QuestLog.ps1` to start QuestLog and mirror server output into a timestamped file inside `logs/`.
 - If PowerShell blocks scripts on your machine, run `powershell -ExecutionPolicy Bypass -File .\Start-QuestLog.ps1`.
+
+## How to Run It as a Desktop App
+
+1. Make sure Node.js is installed.
+2. Open this folder in a terminal.
+3. Run `npm install`.
+4. Run `npm run desktop-start`.
+5. QuestLog will open in its Electron desktop window and keep its own local app data between relaunches.
+
+### Desktop launchers
+
+- Run `.\Start-QuestLog-Desktop.ps1` to start the desktop app and mirror startup output into `logs/`.
+- Or double-click `Launch-QuestLog-Desktop.cmd` from File Explorer on Windows.
 
 ## Notes About the API
 
@@ -93,3 +114,10 @@ QuestLog/
 3. Run `.\Prepare-Release.ps1`.
 4. Open the `release/` folder and review what will be published.
 5. Commit and push from `release/`.
+
+## Release Cadence
+
+- Keep `CHANGELOG.md` updated with one entry per shipped version.
+- Use the matching changelog entry as the basis for the GitHub Release notes.
+- For each GitHub release, include at minimum: `Highlights`, `Added`, `Improved`, `Fixed`, and any important `Notes`.
+- Treat the `release/` folder as the exact snapshot that gets tagged and released on GitHub.

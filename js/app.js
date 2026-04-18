@@ -51,6 +51,8 @@ const steamForm = document.querySelector("#steam-form");
 const steamIdInput = document.querySelector("#steam-id");
 const steamApiKeyInput = document.querySelector("#steam-api-key");
 const steamImportButton = document.querySelector("#steam-import-button");
+const metadataRepairButton = document.querySelector("#metadata-repair-button");
+const collectionsRepairButton = document.querySelector("#collections-repair-button");
 const steamFeedback = document.querySelector("#steam-feedback");
 const steamImportProgress = document.querySelector("#steam-import-progress");
 const steamImportProgressLabel = document.querySelector("#steam-import-progress-label");
@@ -112,6 +114,8 @@ applyTheme();
 syncApiKeyUi();
 syncSteamUi();
 refreshUi();
+window.handleQuestLogImageError = handleQuestLogImageError;
+window.handleQuestLogImageLoad = handleQuestLogImageLoad;
 
 openSettingsButton.addEventListener("click", () => openModal(settingsModal));
 openAddModalButton.addEventListener("click", () => titleInput.focus());
@@ -124,6 +128,8 @@ document.addEventListener("keydown", handleKeydown);
 apiForm.addEventListener("submit", handleSaveApiKey);
 steamForm.addEventListener("submit", handleSaveSteamSettings);
 steamImportButton.addEventListener("click", handleSteamImport);
+metadataRepairButton.addEventListener("click", handleRepairBrokenMetadata);
+collectionsRepairButton.addEventListener("click", handleRepairCollections);
 exportLibraryButton.addEventListener("click", exportLibrary);
 importLibraryButton.addEventListener("click", () => importFileInput.click());
 nukeLibraryButton.addEventListener("click", nukeLibrary);
@@ -404,7 +410,7 @@ async function handleAddGame(event) {
       rawgTags: metadata.rawgTags,
       estimatedHours: metadata.estimatedHours,
       customTags,
-      collections: [],
+      collections: metadata.suggestedCollections || [],
       notes: "",
       favorite: false,
       statusLocked: false,
@@ -511,6 +517,94 @@ async function handleSteamImport() {
     steamImportInProgress = false;
     steamImportButton.disabled = false;
     steamImportButton.textContent = "Import My Library";
+  }
+}
+
+async function handleRepairBrokenMetadata() {
+  const repairableGames = games.filter(doesGameNeedMetadataRepair);
+
+  if (repairableGames.length === 0) {
+    syncSteamUi("No broken or missing metadata entries were found. Everything already looks healthy.");
+    return;
+  }
+
+  metadataRepairButton.disabled = true;
+  metadataRepairButton.textContent = "Repairing...";
+  steamFeedback.textContent = `Checking ${repairableGames.length} entries for incremental metadata repair.`;
+  updateSteamImportProgress(0, repairableGames.length, "Preparing metadata repair...");
+
+  try {
+    const repairedResults = await mapWithConcurrency(
+      repairableGames,
+      2,
+      repairGameMetadata,
+      ({ completed, total, item }) => {
+        updateSteamImportProgress(
+          completed,
+          total,
+          `Repaired ${completed} of ${total}: ${item?.title || item?.searchTitle || "Unknown game"}`
+        );
+      }
+    );
+
+    const repairedCount = repairedResults.filter(Boolean).length;
+    persistGames();
+    refreshUi();
+    updateSteamImportProgress(repairableGames.length, repairableGames.length, "Metadata repair complete.");
+    steamFeedback.textContent = repairedCount > 0
+      ? `Incremental repair finished. Updated ${repairedCount} of ${repairableGames.length} flagged entries.`
+      : "Incremental repair finished, but none of the flagged entries returned better metadata.";
+  } catch (error) {
+    console.error("Could not repair broken metadata.", error);
+    hideSteamImportProgress(true);
+    syncSteamUi("QuestLog could not repair broken metadata right now. Check your RAWG and Steam settings, then try again.");
+  } finally {
+    metadataRepairButton.disabled = false;
+    metadataRepairButton.textContent = "Repair Broken Metadata";
+  }
+}
+
+async function handleRepairCollections() {
+  const repairableGames = games.filter(doesGameNeedCollectionRepair);
+
+  if (repairableGames.length === 0) {
+    syncSteamUi("No games currently need auto-filled series or developer collections.");
+    return;
+  }
+
+  collectionsRepairButton.disabled = true;
+  collectionsRepairButton.textContent = "Filling...";
+  steamFeedback.textContent = `Scanning ${repairableGames.length} entries for missing series and developer collections.`;
+  updateSteamImportProgress(0, repairableGames.length, "Preparing collection repair...");
+
+  try {
+    const repairedResults = await mapWithConcurrency(
+      repairableGames,
+      2,
+      repairGameCollections,
+      ({ completed, total, item }) => {
+        updateSteamImportProgress(
+          completed,
+          total,
+          `Updated ${completed} of ${total}: ${item?.title || item?.searchTitle || "Unknown game"}`
+        );
+      }
+    );
+
+    const updatedCount = repairedResults.filter(Boolean).length;
+    persistGames();
+    refreshUi();
+    updateSteamImportProgress(repairableGames.length, repairableGames.length, "Collection repair complete.");
+    steamFeedback.textContent = updatedCount > 0
+      ? `Auto-filled collections for ${updatedCount} of ${repairableGames.length} games.`
+      : "Collection repair finished, but no new series or developer groups were found.";
+  } catch (error) {
+    console.error("Could not repair collections.", error);
+    hideSteamImportProgress(true);
+    syncSteamUi("QuestLog could not auto-fill collections right now. Check your metadata settings and try again.");
+  } finally {
+    collectionsRepairButton.disabled = false;
+    collectionsRepairButton.textContent = "Auto-Fill Collections";
   }
 }
 
@@ -852,6 +946,7 @@ function normalizeGame(game) {
     rating: clampRating(Number(game.rating ?? DEFAULT_RATING)),
     coverImage: game.coverImage || "",
     backupCoverImage: game.backupCoverImage || "",
+    coverImageBroken: Boolean(game.coverImageBroken),
     released: game.released || "",
     genres: ensureStringArray(game.genres),
     platforms: ensureStringArray(game.platforms),
@@ -959,16 +1054,124 @@ function applyManualAddToExistingGame(existingGame, { title, status, customTags,
   existingGame.rating = existingGame.rating || metadata?.metacritic || DEFAULT_RATING;
   existingGame.coverImage = existingGame.coverImage || metadata?.coverImage || "";
   existingGame.backupCoverImage = existingGame.backupCoverImage || metadata?.backupCoverImage || "";
+  existingGame.coverImageBroken = false;
   existingGame.released = existingGame.released || metadata?.released || "";
   existingGame.genres = ensureStringArray([...existingGame.genres, ...(metadata?.genres || [])]);
   existingGame.platforms = ensureStringArray([...existingGame.platforms, ...(metadata?.platforms || [])]);
   existingGame.rawgTags = ensureStringArray([...existingGame.rawgTags, ...(metadata?.rawgTags || [])]);
   existingGame.customTags = ensureStringArray([...existingGame.customTags, ...customTags]);
+  existingGame.collections = ensureStringArray([...existingGame.collections, ...(metadata?.suggestedCollections || [])]);
   existingGame.estimatedHours = existingGame.estimatedHours || metadata?.estimatedHours || 0;
   existingGame.rawgSlug = existingGame.rawgSlug || metadata?.rawgSlug || "";
   existingGame.rawgUrl = existingGame.rawgUrl || metadata?.rawgUrl || buildSteamStoreUrl(existingGame.steamAppId);
   existingGame.matchNote = metadata?.matchNote || existingGame.matchNote;
   existingGame.updatedAt = new Date().toISOString();
+}
+
+function doesGameNeedMetadataRepair(game) {
+  return Boolean(
+    game.coverImageBroken
+    || (!game.coverImage && !game.backupCoverImage)
+  );
+}
+
+async function repairGameMetadata(game) {
+  const lookupTitle = game.searchTitle || game.title;
+  const metadata = game.importSource === "steam" && game.steamAppId
+    ? await fetchSteamImportMetadata(lookupTitle, game.steamAppId)
+    : rawgApiKey
+      ? await fetchGameMetadata(lookupTitle)
+      : null;
+
+  if (!metadata) {
+    return false;
+  }
+
+  const hasAnyArtwork = Boolean(metadata.coverImage || metadata.backupCoverImage);
+  const improvedMetadata = hasAnyArtwork
+    || Boolean(metadata.released)
+    || Boolean(metadata.genres?.length)
+    || Boolean(metadata.platforms?.length)
+    || Boolean(metadata.rawgTags?.length);
+
+  if (!improvedMetadata) {
+    return false;
+  }
+
+  Object.assign(game, normalizeGame({
+    ...game,
+    title: game.title || metadata.title || lookupTitle,
+    searchTitle: game.searchTitle || lookupTitle,
+    coverImage: metadata.coverImage || game.coverImage,
+    backupCoverImage: metadata.backupCoverImage || game.backupCoverImage,
+    coverImageBroken: false,
+    released: metadata.released || game.released,
+    genres: metadata.genres?.length ? metadata.genres : game.genres,
+    platforms: metadata.platforms?.length ? metadata.platforms : game.platforms,
+    rawgTags: metadata.rawgTags?.length ? metadata.rawgTags : game.rawgTags,
+    collections: ensureStringArray([...game.collections, ...(metadata.suggestedCollections || [])]),
+    estimatedHours: metadata.estimatedHours || game.estimatedHours,
+    rating: metadata.metacritic || game.rating,
+    rawgSlug: metadata.rawgSlug || game.rawgSlug,
+    rawgUrl: metadata.rawgUrl || game.rawgUrl,
+    matchNote: metadata.matchNote || game.matchNote,
+    updatedAt: new Date().toISOString()
+  }));
+
+  return true;
+}
+
+function doesGameNeedCollectionRepair(game) {
+  const collections = ensureStringArray(game.collections);
+  const hasSeriesCollection = collections.some((item) => item.startsWith("Series: "));
+  const hasDeveloperCollection = collections.some((item) => item.startsWith("Developer: "));
+  const inferredSeries = inferSeriesCollection(game.title || game.searchTitle);
+  const canLookupDevelopers = Boolean(
+    (game.importSource === "steam" && game.steamAppId)
+    || rawgApiKey
+  );
+
+  return Boolean(
+    (inferredSeries && !hasSeriesCollection)
+    || (canLookupDevelopers && !hasDeveloperCollection)
+  );
+}
+
+async function repairGameCollections(game) {
+  const existingCollections = ensureStringArray(game.collections);
+  const inferredCollections = buildSuggestedCollections({
+    title: game.title || game.searchTitle,
+    developers: []
+  });
+  const needsDeveloperCollection = !existingCollections.some((item) => item.startsWith("Developer: "));
+
+  let metadata = null;
+  if (needsDeveloperCollection) {
+    const lookupTitle = game.searchTitle || game.title;
+    metadata = game.importSource === "steam" && game.steamAppId
+      ? await fetchSteamImportMetadata(lookupTitle, game.steamAppId)
+      : rawgApiKey
+        ? await fetchGameMetadata(lookupTitle)
+        : null;
+  }
+
+  const repairedCollections = ensureStringArray([
+    ...existingCollections,
+    ...inferredCollections,
+    ...(metadata?.suggestedCollections || [])
+  ]);
+
+  if (repairedCollections.length === existingCollections.length) {
+    return false;
+  }
+
+  Object.assign(game, normalizeGame({
+    ...game,
+    collections: repairedCollections,
+    updatedAt: new Date().toISOString()
+  }));
+
+  return true;
 }
 
 function shouldImportSteamGame(game) {
@@ -1067,6 +1270,7 @@ async function fetchGameMetadata(title) {
       estimatedHours: 0,
       rawgSlug: "",
       rawgUrl: "",
+      suggestedCollections: [],
       matchNote: "Saved without online metadata. Add a RAWG key in Settings if you want richer matches.",
       isError: false
     };
@@ -1099,6 +1303,7 @@ async function fetchGameMetadata(title) {
         estimatedHours: 0,
         rawgSlug: "",
         rawgUrl: "",
+        suggestedCollections: [],
         matchNote: "No RAWG match was found, so the title was saved as a custom entry.",
         isError: false
       };
@@ -1118,6 +1323,10 @@ async function fetchGameMetadata(title) {
       estimatedHours: Number(details?.playtime || bestMatch.playtime || 0),
       rawgSlug: bestMatch.slug || "",
       rawgUrl: bestMatch.slug ? `https://rawg.io/games/${bestMatch.slug}` : "",
+      suggestedCollections: buildSuggestedCollections({
+        title: bestMatch.name || title,
+        developers: extractDeveloperNames(details?.developers)
+      }),
       matchNote: `Matched "${title}" to "${bestMatch.name || title}".`,
       isError: false
     };
@@ -1134,6 +1343,7 @@ async function fetchGameMetadata(title) {
       estimatedHours: 0,
       rawgSlug: "",
       rawgUrl: "",
+      suggestedCollections: [],
       matchNote: "Saved the game, but metadata lookup failed. Check your RAWG key and browser network access.",
       isError: true
     };
@@ -1172,6 +1382,27 @@ async function fetchSteamOwnedGames() {
   const data = await response.json();
   return data.response?.games || [];
 }
+
+async function fetchSteamStoreDetails(appId) {
+  const url = new URL("/api/steam/store-details", window.location.origin);
+  url.searchParams.set("appids", String(appId));
+  url.searchParams.set("l", "english");
+  url.searchParams.set("cc", "us");
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Steam store details request failed with status ${response.status}`);
+  }
+
+  const data = await response.json();
+  const storeEntry = data?.[String(appId)];
+
+  if (!storeEntry?.success || !storeEntry?.data) {
+    throw new Error(`Steam store details were not available for app ${appId}`);
+  }
+
+  return storeEntry.data;
+}
 async function importSteamGame(game) {
   const appId = game.appid;
   const playtimeMinutes = game.playtime_forever || 0;
@@ -1180,9 +1411,7 @@ async function importSteamGame(game) {
   const canReuseAchievements = canReuseSteamAchievementSummary(existingGame, playtimeMinutes);
   const metadata = canReuseMetadata
     ? getReusableSteamMetadata(existingGame)
-    : rawgApiKey
-      ? await fetchGameMetadata(game.name || `Steam App ${appId}`)
-      : null;
+    : await fetchSteamImportMetadata(game.name || `Steam App ${appId}`, appId);
   const achievementSummary = playtimeMinutes > 0
     ? canReuseAchievements
       ? existingGame.steamAchievementSummary
@@ -1204,7 +1433,7 @@ async function importSteamGame(game) {
     rawgTags: metadata?.rawgTags || [],
     estimatedHours: metadata?.estimatedHours || 0,
     customTags: [],
-    collections: [],
+    collections: metadata?.suggestedCollections || [],
     notes: "",
     favorite: false,
     statusLocked: false,
@@ -1218,6 +1447,139 @@ async function importSteamGame(game) {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   });
+}
+
+async function fetchSteamImportMetadata(title, appId) {
+  const rawgMetadata = rawgApiKey ? await fetchGameMetadata(title) : null;
+  const storeMetadata = await fetchSteamStoreMetadata(appId);
+
+  if (!rawgMetadata) {
+    return storeMetadata;
+  }
+
+  if (!storeMetadata) {
+    return rawgMetadata;
+  }
+
+  return mergeSteamMetadata(rawgMetadata, storeMetadata);
+}
+
+async function fetchSteamStoreMetadata(appId) {
+  try {
+    const storeData = await fetchSteamStoreDetails(appId);
+    return buildSteamStoreMetadata(storeData, appId);
+  } catch (error) {
+    console.warn(`Could not load Steam store metadata for app ${appId}.`, error);
+    return null;
+  }
+}
+
+function mergeSteamMetadata(primaryMetadata, fallbackMetadata) {
+  if (!primaryMetadata) {
+    return fallbackMetadata;
+  }
+
+  if (!fallbackMetadata) {
+    return primaryMetadata;
+  }
+
+  return {
+    ...fallbackMetadata,
+    ...primaryMetadata,
+    title: primaryMetadata.title || fallbackMetadata.title,
+    coverImage: primaryMetadata.coverImage || fallbackMetadata.coverImage,
+    backupCoverImage: primaryMetadata.backupCoverImage || fallbackMetadata.backupCoverImage,
+    released: primaryMetadata.released || fallbackMetadata.released,
+    genres: primaryMetadata.genres?.length ? primaryMetadata.genres : fallbackMetadata.genres,
+    platforms: primaryMetadata.platforms?.length ? primaryMetadata.platforms : fallbackMetadata.platforms,
+    rawgTags: primaryMetadata.rawgTags?.length ? primaryMetadata.rawgTags : fallbackMetadata.rawgTags,
+    estimatedHours: primaryMetadata.estimatedHours || fallbackMetadata.estimatedHours,
+    rawgSlug: primaryMetadata.rawgSlug || fallbackMetadata.rawgSlug,
+    rawgUrl: primaryMetadata.rawgUrl || fallbackMetadata.rawgUrl,
+    metacritic: primaryMetadata.metacritic || fallbackMetadata.metacritic,
+    matchNote: buildMergedSteamMetadataNote(primaryMetadata, fallbackMetadata)
+  };
+}
+
+function buildMergedSteamMetadataNote(primaryMetadata, fallbackMetadata) {
+  if (primaryMetadata?.coverImage && primaryMetadata?.genres?.length) {
+    return primaryMetadata.matchNote;
+  }
+
+  if (fallbackMetadata?.matchNote && primaryMetadata?.matchNote) {
+    return `${primaryMetadata.matchNote} ${fallbackMetadata.matchNote}`;
+  }
+
+  return primaryMetadata?.matchNote || fallbackMetadata?.matchNote || "";
+}
+
+function buildSteamStoreMetadata(storeData, appId) {
+  if (!storeData) {
+    return null;
+  }
+
+  const primaryCover = getSteamStorePrimaryCover(storeData, appId);
+  const backupCover = getSteamStoreBackupCover(storeData, primaryCover, appId);
+
+  return {
+    title: storeData.name || `Steam App ${appId}`,
+    coverImage: primaryCover,
+    backupCoverImage: backupCover,
+    released: normalizeSteamStoreReleaseDate(storeData.release_date?.date),
+    genres: extractSteamStoreGenres(storeData.genres),
+    platforms: ["Steam"],
+    rawgTags: [],
+    suggestedCollections: buildSuggestedCollections({
+      title: storeData.name || `Steam App ${appId}`,
+      developers: ensureStringArray(storeData.developers)
+    }),
+    estimatedHours: 0,
+    rawgSlug: "",
+    rawgUrl: buildSteamStoreUrl(appId),
+    metacritic: Number(storeData.metacritic?.score || 0),
+    matchNote: "Steam Store fallback metadata was used for this import."
+  };
+}
+
+function getSteamStorePrimaryCover(storeData, appId) {
+  return storeData.library_capsule
+    || storeData.library_capsule_2x
+    || storeData.header_image
+    || storeData.capsule_imagev5
+    || buildSteamHeaderImage(appId);
+}
+
+function getSteamStoreBackupCover(storeData, primaryCover, appId) {
+  const candidates = [
+    storeData.library_capsule_2x,
+    storeData.library_capsule,
+    storeData.header_image,
+    storeData.capsule_imagev5,
+    ...extractScreenshotUrls(storeData.screenshots),
+    buildSteamHeaderImage(appId)
+  ].filter(Boolean);
+
+  return candidates.find((candidate) => candidate !== primaryCover) || "";
+}
+
+function normalizeSteamStoreReleaseDate(value) {
+  if (!value) {
+    return "";
+  }
+
+  const parsed = new Date(value);
+  return Number.isFinite(parsed.getTime()) ? parsed.toISOString().slice(0, 10) : "";
+}
+
+function extractSteamStoreGenres(genres) {
+  if (!Array.isArray(genres)) {
+    return [];
+  }
+
+  return genres
+    .map((genre) => genre?.description)
+    .filter(Boolean)
+    .slice(0, 10);
 }
 
 function findExistingSteamGame(appId) {
@@ -1412,7 +1774,7 @@ function mergeImportedGames(importedGames) {
       title: existingGame.title || importedGame.title,
       rating: existingGame.rating || importedGame.rating,
       customTags: existingGame.customTags,
-      collections: existingGame.collections,
+      collections: ensureStringArray([...existingGame.collections, ...importedGame.collections]),
       notes: existingGame.notes,
       favorite: existingGame.favorite,
       statusLocked: existingGame.statusLocked,
@@ -1475,6 +1837,51 @@ function extractPlatformNames(platforms) {
     .slice(0, 5);
 }
 
+function extractDeveloperNames(developers) {
+  if (!Array.isArray(developers)) {
+    return [];
+  }
+
+  return developers
+    .map((developer) => developer?.name)
+    .filter(Boolean)
+    .slice(0, 3);
+}
+
+function buildSuggestedCollections({ title, developers }) {
+  const seriesName = inferSeriesCollection(title);
+  const developerCollections = ensureStringArray(developers).map((developer) => `Developer: ${developer}`);
+
+  return ensureStringArray([
+    seriesName ? `Series: ${seriesName}` : "",
+    ...developerCollections
+  ]);
+}
+
+function inferSeriesCollection(title) {
+  const cleanedTitle = String(title || "").trim();
+  if (!cleanedTitle) {
+    return "";
+  }
+
+  const colonSeries = cleanedTitle.split(":")[0]?.trim();
+  if (colonSeries && colonSeries.length >= 3 && colonSeries !== cleanedTitle) {
+    return colonSeries;
+  }
+
+  const dashSeries = cleanedTitle.split(" - ")[0]?.trim();
+  if (dashSeries && dashSeries.length >= 3 && dashSeries !== cleanedTitle) {
+    return dashSeries;
+  }
+
+  const sequelMatch = cleanedTitle.match(/^(.*?)(?:\s+(?:\d+|[IVX]+))(?:\s|$)/i);
+  if (sequelMatch?.[1]) {
+    return sequelMatch[1].trim();
+  }
+
+  return "";
+}
+
 function extractTagNames(tags) {
   if (!Array.isArray(tags)) {
     return [];
@@ -1504,7 +1911,7 @@ function extractScreenshotUrls(screenshots) {
   }
 
   return screenshots
-    .map((item) => item?.image)
+    .map((item) => item?.image || item?.path_full || item?.path_thumbnail)
     .filter(Boolean);
 }
 
@@ -1513,11 +1920,7 @@ function renderGameImage(game) {
     const imageSource = getGameImageSource(game);
     const imageClass = getGameImageClass(game);
     const fallbackSource = getGameImageFallbackSource(game, imageSource);
-    const onErrorAttribute = fallbackSource
-      ? ` onerror="this.onerror=null;this.src='${escapeAttribute(fallbackSource)}';"`
-      : "";
-
-    return `<img class="${imageClass}" src="${escapeAttribute(imageSource)}" alt="${escapeAttribute(game.title)} cover art"${onErrorAttribute}>`;
+    return `<img class="${imageClass}" src="${escapeAttribute(imageSource)}" alt="${escapeAttribute(game.title)} cover art" data-game-id="${escapeAttribute(game.id)}" data-fallback-src="${escapeAttribute(fallbackSource)}" data-fallback-applied="false" onload="window.handleQuestLogImageLoad && window.handleQuestLogImageLoad(this)" onerror="window.handleQuestLogImageError && window.handleQuestLogImageError(this)">`;
   }
 
   return `<div class="game-item__placeholder" aria-hidden="true"></div>`;
@@ -1525,10 +1928,26 @@ function renderGameImage(game) {
 
 function getGameImageSource(game) {
   if (game.importSource === "steam" && game.steamAppId && activeView === "grid") {
-    return buildSteamGridBanner(game.steamAppId);
+    const preferredGridImage = getPreferredSteamGridImage(game);
+    if (preferredGridImage) {
+      return preferredGridImage;
+    }
   }
 
   return game.coverImage || game.backupCoverImage;
+}
+
+function getPreferredSteamGridImage(game) {
+  if (!game.steamAppId) {
+    return game.coverImage || game.backupCoverImage || "";
+  }
+
+  if (game.coverImageBroken) {
+    return game.coverImage || game.backupCoverImage || buildSteamHeaderImage(game.steamAppId);
+  }
+
+  const gridBanner = buildSteamGridBanner(game.steamAppId);
+  return gridBanner || game.coverImage || game.backupCoverImage || buildSteamHeaderImage(game.steamAppId);
 }
 
 function getGameImageClass(game) {
@@ -1548,6 +1967,14 @@ function getGameImageFallbackSource(game, currentSource) {
       : "";
   }
 
+  if (game.coverImage && game.coverImage !== currentSource) {
+    return game.coverImage;
+  }
+
+  if (game.backupCoverImage && game.backupCoverImage !== currentSource) {
+    return game.backupCoverImage;
+  }
+
   const headerImage = buildSteamHeaderImage(game.steamAppId);
 
   if (activeView === "grid" && headerImage && headerImage !== currentSource) {
@@ -1555,6 +1982,58 @@ function getGameImageFallbackSource(game, currentSource) {
   }
 
   return "";
+}
+
+function handleQuestLogImageError(imageElement) {
+  const fallbackSource = imageElement.dataset.fallbackSrc || "";
+  const hasTriedFallback = imageElement.dataset.fallbackApplied === "true";
+
+  if (fallbackSource && !hasTriedFallback && fallbackSource !== imageElement.currentSrc) {
+    imageElement.dataset.fallbackApplied = "true";
+    imageElement.src = fallbackSource;
+    return;
+  }
+
+  markGameCoverImageBroken(imageElement.dataset.gameId);
+  replaceBrokenImageWithPlaceholder(imageElement);
+}
+
+function handleQuestLogImageLoad(imageElement) {
+  clearGameCoverImageBroken(imageElement.dataset.gameId);
+}
+
+function markGameCoverImageBroken(gameId) {
+  const game = games.find((entry) => entry.id === gameId);
+  if (!game || game.coverImageBroken) {
+    return;
+  }
+
+  game.coverImageBroken = true;
+  game.updatedAt = new Date().toISOString();
+  persistGames();
+}
+
+function clearGameCoverImageBroken(gameId) {
+  const game = games.find((entry) => entry.id === gameId);
+  if (!game || !game.coverImageBroken) {
+    return;
+  }
+
+  game.coverImageBroken = false;
+  persistGames();
+}
+
+function replaceBrokenImageWithPlaceholder(imageElement) {
+  const artContainer = imageElement.parentElement;
+  if (!artContainer) {
+    return;
+  }
+
+  imageElement.remove();
+
+  if (!artContainer.querySelector(".game-item__placeholder")) {
+    artContainer.insertAdjacentHTML("afterbegin", '<div class="game-item__placeholder" aria-hidden="true"></div>');
+  }
 }
 
 function getGameArtClass(game) {
