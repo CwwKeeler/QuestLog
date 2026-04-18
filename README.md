@@ -31,8 +31,6 @@ QuestLog/
 |   |-- brand/
 |   |   |-- questlog_logo_transparent.png
 |   |   `-- questlog_q_icon_transparent.png
-|   `-- demo/
-|       `-- questlog-demo.mp4
 |-- index.html
 |-- package.json
 |-- README.md
