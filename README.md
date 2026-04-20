@@ -73,8 +73,8 @@ QuestLog/
 
 ### PowerShell launcher
 
-- Run `.\scripts\Start-QuestLog.ps1` to start QuestLog and mirror server output into a timestamped file inside `logs/`.
-- If PowerShell blocks scripts on your machine, run `powershell -ExecutionPolicy Bypass -File .\scripts\Start-QuestLog.ps1`.
+- Run `./scripts/Start-QuestLog.ps1` to start QuestLog and mirror server output into a timestamped file inside `logs/`.
+- If PowerShell blocks scripts on your machine, run `powershell -ExecutionPolicy Bypass -File ./scripts/Start-QuestLog.ps1`.
 
 ## How to Run It as a Desktop App
 
@@ -86,8 +86,9 @@ QuestLog/
 
 ### Desktop launchers
 
-- Run `.\scripts\Start-QuestLog-Desktop.ps1` to start the desktop app and mirror startup output into `logs/`.
-- Or double-click `scripts\Launch-QuestLog-Desktop.cmd` from File Explorer on Windows.
+- Run `./scripts/Start-QuestLog-Desktop.ps1` to start the desktop app and mirror startup output into `logs/`.
+- Or double-click `scripts/Launch-QuestLog-Desktop.cmd` from File Explorer on Windows.
+- On macOS, run `./scripts/Start-QuestLog-Desktop.command` from Terminal, or mark it executable and double-click it in Finder.
 
 ## How to Build the Windows Installer
 
@@ -102,6 +103,21 @@ QuestLog/
 - The Windows build uses Electron Builder with an NSIS installer target.
 - The installer creates a normal QuestLog desktop app with Start Menu and desktop shortcuts.
 - The packaged desktop build still uses the same local QuestLog UI and bundled local server behavior as the source-based desktop version.
+
+## How to Build the macOS App
+
+1. Make sure Node.js is installed.
+2. Open this folder in Terminal on macOS.
+3. Run `npm install`.
+4. Run `npm run dist:mac`.
+5. The packaged `.dmg` and `.zip` files will be created inside `dist/`.
+
+### macOS notes
+
+- The macOS build generates a `.icns` app icon from `assets/brand/questlog_q_icon_transparent.png`.
+- `npm run dist:mac:dir` creates an unpacked app bundle for quick local smoke tests.
+- GitHub-ready release uploads use `QuestLog-<version>-mac-<arch>.dmg` and `QuestLog-<version>-mac-<arch>.zip`.
+- The generated app is unsigned by default, so macOS Gatekeeper may ask you to confirm opening it on another machine.
 
 ## Notes About the API
 

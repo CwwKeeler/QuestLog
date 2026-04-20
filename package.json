@@ -1,15 +1,18 @@
 {
     "name":  "questlog",
-    "version":  "1.0.1",
+    "version":  "1.0.2",
     "private":  true,
     "main":  "desktop/main.js",
     "author":  "QuestLog",
     "description":  "QuestLog local server for the browser app and Steam proxy routes.",
     "scripts":  {
                     "start":  "node server.js",
-                    "desktop-start":  "electron .\\desktop\\main.js",
+                    "desktop-start":  "electron ./desktop/main.js",
+                    "build:icon:mac":  "bash ./scripts/build-macos-icon.sh",
                     "dist":  "electron-builder",
-                    "dist:win":  "electron-builder --win nsis"
+                    "dist:win":  "electron-builder --win nsis",
+                    "dist:mac":  "bash ./scripts/build-macos-icon.sh && electron-builder --mac dmg zip --x64 --arm64",
+                    "dist:mac:dir":  "bash ./scripts/build-macos-icon.sh && electron-builder --mac dir --x64 --arm64"
                 },
     "devDependencies":  {
                             "electron":  "^38.1.0",
@@ -18,11 +21,12 @@
     "build":  {
                   "appId":  "com.questlog.desktop",
                   "productName":  "QuestLog",
-                  "artifactName":  "${productName}-Setup-${version}.${ext}",
+                  "artifactName":  "${productName}-${version}.${ext}",
                   "npmRebuild":  false,
                   "directories":  {
                                       "output":  "dist"
                                   },
+                  "afterPack":  "scripts/after-pack.js",
                   "files":  [
                                 "assets/**/*",
                                 "css/**/*",
@@ -35,7 +39,33 @@
                   "extraMetadata":  {
                                         "main":  "desktop/main.js"
                                     },
+                  "mac":  {
+                              "category":  "public.app-category.games",
+                              "artifactName":  "${productName}-${version}-mac-${arch}.${ext}",
+                              "icon":  "assets/brand/questlog_q_icon.icns",
+                              "identity":  null,
+                              "target":  [
+                                             {
+                                                 "target":  "dmg",
+                                                 "arch":  [
+                                                              "x64",
+                                                              "arm64"
+                                                          ]
+                                             },
+                                             {
+                                                 "target":  "zip",
+                                                 "arch":  [
+                                                              "x64",
+                                                              "arm64"
+                                                          ]
+                                             }
+                                         ]
+                          },
+                  "dmg":  {
+                              "artifactName":  "${productName}-${version}-mac-${arch}.${ext}"
+                          },
                   "win":  {
+                              "artifactName":  "${productName}-Setup-${version}.${ext}",
                               "signAndEditExecutable":  false,
                               "target":  [
                                              {

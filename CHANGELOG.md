@@ -2,6 +2,36 @@
 
 All notable QuestLog release notes should be recorded here and mirrored in the matching GitHub Release entry.
 
+## [v1.0.2] - 2026-04-19
+
+### Highlights
+
+- Added the first packaged macOS release workflow for QuestLog.
+- Kept the GitHub release asset naming consistent across platforms while adding Mac-specific archives.
+
+### Added
+
+- macOS packaging targets for signed-ready `.dmg`, `.zip`, and unpacked `.app` smoke-test builds.
+- A generated `.icns` app icon workflow and a macOS launcher helper script for local desktop runs.
+- A post-pack cleanup step that clears macOS extended attributes from packaged app output.
+
+### Improved
+
+- Desktop startup scripts now use a cross-platform Electron entry path that works cleanly on macOS.
+- Release artifact names now stay predictable for GitHub uploads across Windows and macOS builds.
+- README packaging instructions now cover the full macOS build flow alongside the existing Windows release flow.
+
+### Fixed
+
+- Packaged macOS builds no longer rely on Windows-style path separators in the desktop startup command.
+- Local macOS packaging is less likely to carry Finder or Gatekeeper metadata into release artifacts.
+
+### Notes
+
+- The generated Windows installer for this version remains `QuestLog-Setup-1.0.2.exe`.
+- The generated macOS release assets for this version are `QuestLog-1.0.2-mac-arm64.dmg`, `QuestLog-1.0.2-mac-arm64.zip`, `QuestLog-1.0.2-mac-x64.dmg`, and `QuestLog-1.0.2-mac-x64.zip`.
+- A GitHub Release entry should use this changelog section as its release notes.
+
 ## [v1.0.1] - 2026-04-18
 
 ### Highlights
