@@ -2,128 +2,103 @@
 
 ![QuestLog Logo](assets/brand/questlog_logo_transparent.png)
 
-QuestLog is a small beginner-friendly web app for tracking games you want to play, are currently playing, or have already finished.
-It can fetch game metadata and cover art from the RAWG API, and it can import your Steam library through a tiny local Node server.
+QuestLog is a desktop-friendly game library tracker for managing your backlog, active games, finished runs, notes, and imports in one place. It started as a simple browser app and now ships with packaged Windows and macOS desktop builds.
+
+## What It Does
+
+- Track games with statuses: `Backlog`, `Playing`, `Paused`, `Finished`, and `Dropped`
+- Search, sort, and filter by status, platform, collections, favorites, and tags
+- Save notes, favorites, collections, custom tags, and ratings
+- Import your Steam library and refresh Steam activity data
+- Pull cover art and metadata from RAWG
+- Surface a `Pick Up Where You Left Off` shelf based on active games and Steam last-played data
+- Bulk update multiple games at once
+- View a dedicated stats page with library breakdowns, rankings, and activity summaries
+- Personalize the app with light/dark themes, layout options, and built-in backgrounds
+- Export and import local JSON backups
+
+## Current Desktop Features
+
+- Packaged Windows installer
+- Packaged macOS `.dmg` and `.zip` builds
+- Steam auto-sync interval options: `Off`, `5 min`, `10 min`, `30 min`, `1 hour`
+- Scenic backgrounds that stay pinned near the top of the page and fade into the app background on scroll
+- Muted in-app scrollbar styling for the desktop experience
 
 ## Demo
 
 - [Watch the QuestLog demo video](https://youtu.be/6S6tBhGhd-k)
-- The demo shows the app running locally with the current game library, Steam import tools, filtering, and tracking workflow.
 
-## Features
+## Quick Start
 
-- Add a game title
-- Choose a status: `Backlog`, `Playing`, `Finished`, `Paused`, or `Dropped`
-- Add a personal rating from `1` to `10`
-- Search, sort, and filter by status, platform, collections, favorites, and tags
-- Edit notes, collections, favorites, and custom tags
-- Import your Steam library through a local proxy
-- Export or import a JSON backup
-- Delete entries
-- Save everything in `localStorage`
-- Pull matching metadata and cover art from RAWG
+### Run in the browser
 
-## Project Structure
+1. Install Node.js.
+2. Open the project folder in a terminal.
+3. Run `npm install`.
+4. Run `npm start`.
+5. Open `http://localhost:3000`.
 
-```text
-QuestLog/
-|-- assets/
-|   |-- brand/
-|   |   |-- questlog_logo_transparent.png
-|   |   `-- questlog_q_icon_transparent.png
-|-- desktop/
-|   |-- main.js
-|   `-- preload.js
-|-- scripts/
-|   |-- Launch-QuestLog-Desktop.cmd
-|   |-- Start-QuestLog.ps1
-|   `-- Start-QuestLog-Desktop.ps1
-|-- CHANGELOG.md
-|-- index.html
-|-- package-lock.json
-|-- package.json
-|-- README.md
-|-- server.js
-|-- css/
-|   `-- styles.css
-`-- js/
-    `-- app.js
-```
+### Run as a desktop app
 
-## What Each File Does
-
-- `index.html` contains the page structure, form, filter dropdown, and game list container.
-- `css/styles.css` controls the layout, colors, spacing, card-based game shelf, and responsive design.
-- `js/app.js` handles RAWG lookup, Steam import requests, filtering, editing, backups, theme/view preferences, and saving/loading from `localStorage`.
-- `server.js` serves the app on `localhost` and proxies Steam API requests so Steam import works in the browser.
-- `desktop/main.js` and `desktop/preload.js` provide the Electron desktop shell.
-- `scripts/` contains the browser and desktop launcher helpers.
-- `package.json` adds the browser and desktop startup commands.
-- `package-lock.json` keeps installs reproducible across machines.
-- `README.md` explains the app and folder structure so it is easier to understand later.
-- `CHANGELOG.md` tracks shipped versions and mirrors the GitHub release notes cadence.
-
-## How to Run It
-
-1. Make sure Node.js is installed.
-2. Open this folder in a terminal.
-3. Run `npm start`.
-4. QuestLog will open in your browser at `http://localhost:3000`.
-5. Add your RAWG key or Steam settings in QuestLog's Settings modal.
-
-### PowerShell launcher
-
-- Run `./scripts/Start-QuestLog.ps1` to start QuestLog and mirror server output into a timestamped file inside `logs/`.
-- If PowerShell blocks scripts on your machine, run `powershell -ExecutionPolicy Bypass -File ./scripts/Start-QuestLog.ps1`.
-
-## How to Run It as a Desktop App
-
-1. Make sure Node.js is installed.
-2. Open this folder in a terminal.
+1. Install Node.js.
+2. Open the project folder in a terminal.
 3. Run `npm install`.
 4. Run `npm run desktop-start`.
-5. QuestLog will open in its Electron desktop window and keep its own local app data between relaunches.
 
-### Desktop launchers
+QuestLog will open in its Electron window and keep its own local app data between relaunches.
 
-- Run `./scripts/Start-QuestLog-Desktop.ps1` to start the desktop app and mirror startup output into `logs/`.
-- Or double-click `scripts/Launch-QuestLog-Desktop.cmd` from File Explorer on Windows.
-- On macOS, run `./scripts/Start-QuestLog-Desktop.command` from Terminal, or mark it executable and double-click it in Finder.
+## Build Releases
 
-## How to Build the Windows Installer
+### Windows
 
-1. Make sure Node.js is installed.
-2. Open this folder in a terminal.
-3. Run `npm install`.
-4. Run `npm run dist:win`.
-5. The packaged installer will be created inside `dist/`.
+1. Run `npm install`
+2. Run `npm run dist:win`
+3. Find the installer in `dist/`
 
-### Installer notes
+Release artifact format:
+- `QuestLog-Setup-<version>.exe`
 
-- The Windows build uses Electron Builder with an NSIS installer target.
-- The installer creates a normal QuestLog desktop app with Start Menu and desktop shortcuts.
-- The packaged desktop build still uses the same local QuestLog UI and bundled local server behavior as the source-based desktop version.
+### macOS
 
-## How to Build the macOS App
+1. Run `npm install`
+2. Run `npm run dist:mac`
+3. Find the release files in `dist/`
 
-1. Make sure Node.js is installed.
-2. Open this folder in Terminal on macOS.
-3. Run `npm install`.
-4. Run `npm run dist:mac`.
-5. The packaged `.dmg` and `.zip` files will be created inside `dist/`.
+Release artifact format:
+- `QuestLog-<version>-mac-<arch>.dmg`
+- `QuestLog-<version>-mac-<arch>.zip`
 
-### macOS notes
+Useful local test build:
+- `npm run dist:mac:dir`
 
-- The macOS build generates a `.icns` app icon from `assets/brand/questlog_q_icon_transparent.png`.
-- `npm run dist:mac:dir` creates an unpacked app bundle for quick local smoke tests.
-- GitHub-ready release uploads use `QuestLog-<version>-mac-<arch>.dmg` and `QuestLog-<version>-mac-<arch>.zip`.
-- The generated app is unsigned by default, so macOS Gatekeeper may ask you to confirm opening it on another machine.
+macOS note:
+- The packaged app is unsigned by default, so Gatekeeper may warn on other Macs until the app is signed and notarized.
 
-## Notes About the API
+## Steam And RAWG Notes
 
-- This project uses the RAWG API from the browser, so the API key is stored in `localStorage` for simplicity.
-- This project uses a small local server for Steam import because Steam requests are not reliable from a plain local HTML file.
-- That is fine for a small personal project, but it is not secure enough for a production app.
-- RAWG asks for attribution when you use their data and images, so the app includes a source credit in the interface.
-- Code in this repository is licensed under the MIT License in [LICENSE](LICENSE).
+- RAWG metadata is optional, but it improves cover art, tags, genres, and release information.
+- Steam import and Steam activity sync need a Steam ID64 and Steam Web API key.
+- Steam import works through the local QuestLog server instead of directly from a plain local HTML file.
+- RAWG and Steam data are credited in the app where applicable.
+
+## Local Data
+
+- QuestLog stores library data and settings locally on the machine running it.
+- Browser mode uses `localStorage`.
+- Desktop mode keeps its own app data between relaunches.
+- JSON backup export/import is built in for portability.
+
+## Repository Layout
+
+- [index.html](/Users/cwwkeeler/Documents/Codex%20Projects/Development/QuestLog/index.html): app shell and modal structure
+- [css/styles.css](/Users/cwwkeeler/Documents/Codex%20Projects/Development/QuestLog/css/styles.css): app styling, themes, backgrounds, responsive layout
+- [js/app.js](/Users/cwwkeeler/Documents/Codex%20Projects/Development/QuestLog/js/app.js): app logic, filters, Steam import, stats, backups, persistence
+- [server.js](/Users/cwwkeeler/Documents/Codex%20Projects/Development/QuestLog/server.js): local server and Steam proxy routes
+- [desktop/main.js](/Users/cwwkeeler/Documents/Codex%20Projects/Development/QuestLog/desktop/main.js): Electron desktop shell
+- [CHANGELOG.md](/Users/cwwkeeler/Documents/Codex%20Projects/Development/QuestLog/CHANGELOG.md): release history
+
+## License
+
+- Code is licensed under the [MIT License](LICENSE).
 - Branding assets are covered by [LICENSE-LOGO-CC-BY-4.0.txt](LICENSE-LOGO-CC-BY-4.0.txt).
