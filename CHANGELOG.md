@@ -2,6 +2,38 @@
 
 All notable QuestLog release notes should be recorded here and mirrored in the matching GitHub Release entry.
 
+## [v1.0.3] - 2026-04-21
+
+### Highlights
+
+- Added a dedicated stats page for viewing library progress, activity, and rankings in one place.
+- Brought the desktop experience forward with new quality-of-life features across both macOS and Windows builds.
+
+### Added
+
+- A new `View Stats` modal with overview cards, status breakdowns, activity highlights, top platforms, top tags, top collections, and library leaderboards.
+- Bulk-selection controls for updating multiple games at once from the library view.
+- New scenic background personalization options with richer built-in art treatments.
+
+### Improved
+
+- `Pick Up Where You Left Off` now prioritizes Steam last-played data for more accurate resurfacing.
+- Steam activity sync can now run automatically on a selectable interval of 5, 10, 30, or 60 minutes while QuestLog is open.
+- Scenic backgrounds now pin artwork to the top of the page and fade naturally into the app background while scrolling.
+- The Windows packaged build now matches the latest macOS feature set, including stats, personalization, and Steam activity improvements.
+
+### Fixed
+
+- Spotlight cards no longer show extra update text that made the shelf feel cluttered.
+- Scrollbars now stay visually muted and only reveal a softer in-app thumb while scrolling.
+- The root page scrollbar styling now applies correctly without the bright default track showing through.
+
+### Notes
+
+- The generated Windows installer for this version is `QuestLog-Setup-1.0.3.exe`.
+- The generated macOS release assets for this version are `QuestLog-1.0.3-mac-arm64.dmg` and `QuestLog-1.0.3-mac-arm64.zip`.
+- A GitHub Release entry should use this changelog section as its release notes.
+
 ## [v1.0.2] - 2026-04-19
 
 ### Highlights

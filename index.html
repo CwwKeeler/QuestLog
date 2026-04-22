@@ -45,6 +45,7 @@
         </p>
 
         <div class="hero__actions">
+          <button type="button" id="open-stats-button" class="button button--secondary">View Stats</button>
           <button type="button" id="open-settings-button" class="button button--secondary">Open Settings</button>
           <button type="button" id="open-add-modal-button" class="button button--primary">Quick Add</button>
         </div>
@@ -53,6 +54,17 @@
 
     <main class="app-layout">
       <section class="stats-grid" id="stats-grid" aria-live="polite"></section>
+
+      <section class="panel panel--wide spotlight-panel">
+        <div class="section-header">
+          <div>
+            <h2>Pick Up Where You Left Off</h2>
+            <p class="section-text">A quick shelf for active runs and recently touched games.</p>
+          </div>
+        </div>
+
+        <div id="spotlight-shelf" class="spotlight-shelf" aria-live="polite"></div>
+      </section>
 
       <section class="panel panel--wide">
         <div class="section-header">
@@ -114,12 +126,30 @@
           <div class="toggle-row">
             <button type="button" id="favorites-filter-button" class="chip-button">Favorites Only</button>
             <button type="button" id="clear-filters" class="button button--secondary">Clear Filters</button>
+            <button type="button" id="selection-mode-button" class="button button--secondary">Select Games</button>
           </div>
 
           <div class="toggle-row">
             <span class="toolbar-label">View</span>
             <button type="button" class="chip-button view-toggle" data-view="grid">Grid</button>
             <button type="button" class="chip-button view-toggle" data-view="compact">Compact</button>
+          </div>
+        </div>
+
+        <div id="bulk-action-bar" class="bulk-action-bar hidden" aria-live="polite">
+          <div>
+            <p id="bulk-action-summary" class="bulk-action-bar__summary">No games selected.</p>
+            <p class="helper-text">Use selection mode to update several entries at once.</p>
+          </div>
+
+          <div class="bulk-action-bar__actions">
+            <button type="button" class="button button--secondary" data-bulk-status="Backlog">Set Backlog</button>
+            <button type="button" class="button button--secondary" data-bulk-status="Playing">Set Playing</button>
+            <button type="button" class="button button--secondary" data-bulk-status="Paused">Set Paused</button>
+            <button type="button" class="button button--secondary" data-bulk-status="Finished">Set Finished</button>
+            <button type="button" class="button button--secondary" data-bulk-favorite="true">Favorite</button>
+            <button type="button" class="button button--secondary" data-bulk-favorite="false">Unfavorite</button>
+            <button type="button" id="clear-selection-button" class="button button--secondary">Clear Selection</button>
           </div>
         </div>
 
@@ -239,6 +269,17 @@
               <input id="steam-api-key" name="steam-api-key" type="text" placeholder="Paste your Steam API key" autocomplete="off">
             </div>
 
+            <div class="form-group">
+              <label for="steam-auto-sync">Steam auto-sync interval</label>
+              <select id="steam-auto-sync" name="steam-auto-sync">
+                <option value="0">Off</option>
+                <option value="5">Every 5 minutes</option>
+                <option value="10">Every 10 minutes</option>
+                <option value="30">Every 30 minutes</option>
+                <option value="60">Every hour</option>
+              </select>
+            </div>
+
             <div class="button-row">
               <button type="submit" class="button button--secondary">Save Steam Settings</button>
               <button type="button" id="steam-import-button" class="button button--primary">Import My Library</button>
@@ -265,13 +306,48 @@
           <div class="panel-header">
             <div>
               <h2>Appearance</h2>
-              <p class="section-text">Pick a theme and default browsing style.</p>
+              <p class="section-text">Pick a theme, background, and default browsing style.</p>
             </div>
           </div>
 
           <div class="button-row">
             <button type="button" class="chip-button theme-toggle" data-theme="dark">Dark</button>
             <button type="button" class="chip-button theme-toggle" data-theme="light">Light</button>
+          </div>
+
+          <div class="background-picker" role="group" aria-label="Background options">
+            <button type="button" class="background-toggle" data-background="default" aria-label="Default background">
+              <span class="background-toggle__preview background-toggle__preview--default" aria-hidden="true"></span>
+              <span class="background-toggle__label">Default</span>
+            </button>
+            <button type="button" class="background-toggle" data-background="grid" aria-label="Grid background">
+              <span class="background-toggle__preview background-toggle__preview--grid" aria-hidden="true"></span>
+              <span class="background-toggle__label">Grid</span>
+            </button>
+            <button type="button" class="background-toggle" data-background="orbits" aria-label="Orbit background">
+              <span class="background-toggle__preview background-toggle__preview--orbits" aria-hidden="true"></span>
+              <span class="background-toggle__label">Orbits</span>
+            </button>
+            <button type="button" class="background-toggle" data-background="topography" aria-label="Topography background">
+              <span class="background-toggle__preview background-toggle__preview--topography" aria-hidden="true"></span>
+              <span class="background-toggle__label">Topography</span>
+            </button>
+            <button type="button" class="background-toggle" data-background="paper" aria-label="Paper background">
+              <span class="background-toggle__preview background-toggle__preview--paper" aria-hidden="true"></span>
+              <span class="background-toggle__label">Paper</span>
+            </button>
+            <button type="button" class="background-toggle" data-background="lookout" aria-label="Lookout background">
+              <span class="background-toggle__preview background-toggle__preview--lookout" aria-hidden="true"></span>
+              <span class="background-toggle__label">Lookout</span>
+            </button>
+            <button type="button" class="background-toggle" data-background="wilds" aria-label="Wilds background">
+              <span class="background-toggle__preview background-toggle__preview--wilds" aria-hidden="true"></span>
+              <span class="background-toggle__label">Wilds</span>
+            </button>
+            <button type="button" class="background-toggle" data-background="neon-city" aria-label="Neon city background">
+              <span class="background-toggle__preview background-toggle__preview--neon-city" aria-hidden="true"></span>
+              <span class="background-toggle__label">Neon City</span>
+            </button>
           </div>
         </section>
 
@@ -291,6 +367,97 @@
 
           <input id="import-file-input" type="file" accept=".json,application/json" class="visually-hidden">
           <p id="backup-feedback" class="helper-text">Backups include your library, notes, tags, favorites, and settings-related game data.</p>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div id="stats-modal" class="modal hidden" aria-hidden="true">
+    <div class="modal__backdrop" data-close-stats></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="stats-title">
+      <div class="modal__header">
+        <div>
+          <p class="eyebrow">QuestLog Stats</p>
+          <h2 id="stats-title">Library Progress And Trends</h2>
+        </div>
+        <button type="button" id="close-stats-button" class="button button--secondary">Close</button>
+      </div>
+
+      <div class="modal__content">
+        <section class="panel panel--nested">
+          <div class="panel-header">
+            <div>
+              <h2>Overview</h2>
+              <p class="section-text">A quick look at your library health, activity, and momentum.</p>
+            </div>
+          </div>
+          <div id="stats-overview-grid" class="stats-grid stats-grid--expanded" aria-live="polite"></div>
+        </section>
+
+        <section class="stats-modal-grid">
+          <section class="panel panel--nested">
+            <div class="panel-header">
+              <div>
+                <h2>Status Breakdown</h2>
+                <p class="section-text">See where your backlog, active runs, and finished games stand.</p>
+              </div>
+            </div>
+            <div id="stats-status-list" class="stats-stack" aria-live="polite"></div>
+          </section>
+
+          <section class="panel panel--nested">
+            <div class="panel-header">
+              <div>
+                <h2>Highlights</h2>
+                <p class="section-text">A few useful rollups from your recent activity and imported data.</p>
+              </div>
+            </div>
+            <div id="stats-highlight-list" class="stats-stack" aria-live="polite"></div>
+          </section>
+        </section>
+
+        <section class="stats-modal-grid">
+          <section class="panel panel--nested">
+            <div class="panel-header">
+              <div>
+                <h2>Top Platforms</h2>
+                <p class="section-text">Where most of your library currently lives.</p>
+              </div>
+            </div>
+            <div id="stats-platform-list" class="stats-rank-list" aria-live="polite"></div>
+          </section>
+
+          <section class="panel panel--nested">
+            <div class="panel-header">
+              <div>
+                <h2>Top Tags</h2>
+                <p class="section-text">The genres, moods, and themes showing up most often.</p>
+              </div>
+            </div>
+            <div id="stats-tag-list" class="stats-rank-list" aria-live="polite"></div>
+          </section>
+        </section>
+
+        <section class="stats-modal-grid">
+          <section class="panel panel--nested">
+            <div class="panel-header">
+              <div>
+                <h2>Collections</h2>
+                <p class="section-text">Your most common series, developer, and custom collection groupings.</p>
+              </div>
+            </div>
+            <div id="stats-collection-list" class="stats-rank-list" aria-live="polite"></div>
+          </section>
+
+          <section class="panel panel--nested">
+            <div class="panel-header">
+              <div>
+                <h2>Leaderboard</h2>
+                <p class="section-text">The heaviest hitters in your library right now.</p>
+              </div>
+            </div>
+            <div id="stats-leaderboard-list" class="stats-rank-list" aria-live="polite"></div>
+          </section>
         </section>
       </div>
     </div>
