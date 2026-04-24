@@ -52,21 +52,128 @@
       </div>
     </header>
 
-    <main class="app-layout">
-      <section class="stats-grid" id="stats-grid" aria-live="polite"></section>
+    <section id="game-page" class="game-page hidden" aria-live="polite">
+      <div class="game-page__topbar">
+        <button type="button" id="game-page-back-button" class="button button--secondary">Back To Library</button>
+        <button type="button" id="game-page-edit-button" class="button button--primary">Edit Game</button>
+      </div>
 
-      <section class="panel panel--wide spotlight-panel">
-        <div class="section-header">
-          <div>
-            <h2>Pick Up Where You Left Off</h2>
-            <p class="section-text">A quick shelf for active runs and recently touched games.</p>
-          </div>
-        </div>
-
-        <div id="spotlight-shelf" class="spotlight-shelf" aria-live="polite"></div>
+      <section class="panel game-page__hero">
+        <div id="game-page-hero" class="game-page__hero-content"></div>
       </section>
 
-      <section class="panel panel--wide">
+      <section class="game-page__grid">
+        <section class="panel">
+          <div class="section-header">
+            <div>
+              <h2>Overview</h2>
+              <p class="section-text">A deeper look at this game and your progress with it.</p>
+            </div>
+          </div>
+          <div id="game-page-overview" class="game-page__stack"></div>
+        </section>
+
+        <section class="panel">
+          <div class="section-header">
+            <div>
+              <h2>Achievements</h2>
+              <p class="section-text">Steam progress, unlock counts, and completion hints when available.</p>
+            </div>
+          </div>
+          <div id="game-page-achievements" class="game-page__stack"></div>
+        </section>
+      </section>
+
+      <section class="game-page__grid">
+        <section class="panel">
+          <div class="section-header">
+            <div>
+              <h2>Your Notes</h2>
+              <p class="section-text">Personal reminders, goals, and progress notes for this game.</p>
+            </div>
+          </div>
+          <div id="game-page-notes" class="game-page__stack"></div>
+        </section>
+
+        <section class="panel">
+          <div class="section-header">
+            <div>
+              <h2>Collections And Tags</h2>
+              <p class="section-text">The shelves, tags, and metadata that connect this game to the rest of your library.</p>
+            </div>
+          </div>
+          <div id="game-page-taxonomy" class="game-page__stack"></div>
+        </section>
+      </section>
+    </section>
+
+    <main class="app-layout">
+      <aside class="sidebar-stack sidebar-stack--left">
+        <section class="panel smart-collection-panel">
+          <div class="section-header section-header--compact">
+            <div>
+              <h2>Smart Collections</h2>
+              <p class="section-text">Dynamic filters that keep themselves updated.</p>
+            </div>
+          </div>
+
+          <div id="smart-collection-shelf" class="smart-collection-list" aria-live="polite"></div>
+        </section>
+      </aside>
+
+      <div class="app-main">
+        <section class="stats-grid" id="stats-grid" aria-live="polite"></section>
+
+        <section class="panel panel--wide spotlight-panel">
+          <div class="section-header">
+            <div>
+              <h2>Pick Up Where You Left Off</h2>
+              <p class="section-text">A quick shelf for active runs and recently touched games.</p>
+            </div>
+          </div>
+
+          <div id="spotlight-shelf" class="spotlight-shelf" aria-live="polite"></div>
+        </section>
+      </div>
+
+      <aside class="sidebar-stack sidebar-stack--right">
+        <section class="panel">
+          <h2>Add a Game</h2>
+
+          <form id="game-form" class="game-form">
+            <div class="form-group">
+              <label for="title">Game title</label>
+              <input id="title" name="title" type="text" placeholder="Example: Hollow Knight" maxlength="100" required>
+            </div>
+
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="status">Status</label>
+                <select id="status" name="status">
+                  <option value="Backlog">Backlog</option>
+                  <option value="Playing">Playing</option>
+                  <option value="Finished">Finished</option>
+                  <option value="Paused">Paused</option>
+                  <option value="Dropped">Dropped</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="custom-tags">Custom tags (optional)</label>
+              <input id="custom-tags" name="custom-tags" type="text" placeholder="Example: Cozy, Co-op, Soulslike">
+            </div>
+
+            <button type="submit" class="button button--primary">Add to QuestLog</button>
+          </form>
+
+          <p id="form-feedback" class="helper-text" aria-live="polite">
+            Enter a title and QuestLog will try to pull Metacritic and playtime estimates before saving.
+          </p>
+        </section>
+      </aside>
+
+      <section class="panel panel--wide library-panel">
         <div class="section-header">
           <div>
             <h2>Your Games</h2>
@@ -176,41 +283,6 @@
           <a href="https://rawg.io/" target="_blank" rel="noreferrer">RAWG</a>
           and
           <a href="https://store.steampowered.com/" target="_blank" rel="noreferrer">Steam</a>.
-        </p>
-      </section>
-
-      <section class="panel">
-        <h2>Add a Game</h2>
-
-        <form id="game-form" class="game-form">
-          <div class="form-group">
-            <label for="title">Game title</label>
-            <input id="title" name="title" type="text" placeholder="Example: Hollow Knight" maxlength="100" required>
-          </div>
-
-          <div class="form-grid">
-            <div class="form-group">
-              <label for="status">Status</label>
-              <select id="status" name="status">
-                <option value="Backlog">Backlog</option>
-                <option value="Playing">Playing</option>
-                <option value="Finished">Finished</option>
-                <option value="Paused">Paused</option>
-                <option value="Dropped">Dropped</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label for="custom-tags">Custom tags (optional)</label>
-            <input id="custom-tags" name="custom-tags" type="text" placeholder="Example: Cozy, Co-op, Soulslike">
-          </div>
-
-          <button type="submit" class="button button--primary">Add to QuestLog</button>
-        </form>
-
-        <p id="form-feedback" class="helper-text" aria-live="polite">
-          Enter a title and QuestLog will try to pull Metacritic and playtime estimates before saving.
         </p>
       </section>
     </main>

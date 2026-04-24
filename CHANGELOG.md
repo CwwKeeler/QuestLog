@@ -2,6 +2,39 @@
 
 All notable QuestLog release notes should be recorded here and mirrored in the matching GitHub Release entry.
 
+## [v1.0.4] - 2026-04-24
+
+### Highlights
+
+- Added a dedicated game page so individual titles can open into their own focused detail view instead of crowding the main library screen.
+- Continued the desktop polish pass with smarter Steam metadata, dynamic smart collections, and a cleaner home and library layout.
+
+### Added
+
+- A separate routed `Game Page` with a hero section, overview cards, achievement summary, collections/tags, and a dedicated notes area.
+- Smart collections for recent Steam activity, unfinished favorites, shorter backlog picks, never-launched Steam games, and games finished this year.
+- Steam store descriptions are now imported and shown on the game page when available.
+
+### Improved
+
+- The home screen now uses a clearer desktop layout with a smart collections sidebar, a centered activity/stats area, and a dedicated add-game panel.
+- The main `Your Games` shelf now has more room and more stable card sizing after the layout pass.
+- Steam artwork on the game page now uses a more resilient fallback chain so imported entries recover better when one image variant fails.
+- Steam metadata reuse now preserves imported descriptions across later refreshes.
+
+### Fixed
+
+- Game-page routing now restores the normal library title and layout cleanly when navigating back.
+- Dedicated game-page artwork now falls back correctly to in-page placeholders instead of looking broken.
+- Several card and action-row layout issues were tightened up so buttons and metadata stop clipping in wider desktop grids.
+
+### Notes
+
+- Existing Steam entries need one fresh import or metadata repair pass to pick up newly stored Steam descriptions.
+- The generated Windows installer for this version should be `QuestLog-Setup-1.0.4.exe`.
+- The generated macOS release assets for this version should be `QuestLog-1.0.4-mac-arm64.dmg` and `QuestLog-1.0.4-mac-arm64.zip`.
+- A GitHub Release entry should use this changelog section as its release notes.
+
 ## [v1.0.3] - 2026-04-21
 
 ### Highlights

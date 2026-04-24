@@ -15,6 +15,7 @@ const DEFAULT_RATING = 0;
 const DEFAULT_THEME = "dark";
 const DEFAULT_VIEW = "grid";
 const DEFAULT_BACKGROUND = "default";
+const DEFAULT_DOCUMENT_TITLE = document.title;
 const AVAILABLE_BACKGROUNDS = [
   "default",
   "grid",
@@ -28,6 +29,38 @@ const AVAILABLE_BACKGROUNDS = [
 const TAG_FILTER_PREVIEW_COUNT = 18;
 const DEFAULT_STEAM_AUTO_SYNC_MINUTES = 30;
 const STEAM_AUTO_SYNC_MINUTE_OPTIONS = [0, 5, 10, 30, 60];
+const SMART_COLLECTIONS = [
+  {
+    id: "recently-played",
+    label: "Played In The Last 7 Days",
+    description: "Games with recent Steam activity.",
+    match: (game) => isDateWithinDays(game.steamLastPlayedAt, 7)
+  },
+  {
+    id: "favorites-unfinished",
+    label: "Favorites Not Finished",
+    description: "Favorites that are still waiting for an ending.",
+    match: (game) => game.favorite && game.status !== "Finished"
+  },
+  {
+    id: "backlog-under-10",
+    label: "Backlog Under 10 Hours",
+    description: "Shorter backlog picks you could finish sooner.",
+    match: (game) => game.status === "Backlog" && game.estimatedHours > 0 && game.estimatedHours <= 10
+  },
+  {
+    id: "steam-unplayed",
+    label: "Steam Games Never Launched",
+    description: "Imported Steam games with zero tracked playtime.",
+    match: (game) => game.importSource === "steam" && (game.steamPlaytimeMinutes || 0) === 0
+  },
+  {
+    id: "finished-this-year",
+    label: "Finished This Year",
+    description: "Games marked finished during the current year.",
+    match: (game) => game.status === "Finished" && isDateInCurrentYear(game.updatedAt)
+  }
+];
 const STEAM_IMPORT_EXCLUSION_PATTERNS = [
   /\bdemo\b/i,
   /\bplaytest\b/i,
@@ -55,10 +88,14 @@ const COMPLETION_KEYWORDS = [
 const settingsModal = document.querySelector("#settings-modal");
 const statsModal = document.querySelector("#stats-modal");
 const gameModal = document.querySelector("#game-modal");
+const gamePage = document.querySelector("#game-page");
+const appLayout = document.querySelector(".app-layout");
 const modalDialogs = [...document.querySelectorAll(".modal__dialog")];
 const openStatsButton = document.querySelector("#open-stats-button");
 const openSettingsButton = document.querySelector("#open-settings-button");
 const openAddModalButton = document.querySelector("#open-add-modal-button");
+const gamePageBackButton = document.querySelector("#game-page-back-button");
+const gamePageEditButton = document.querySelector("#game-page-edit-button");
 const closeStatsButton = document.querySelector("#close-stats-button");
 const closeSettingsButton = document.querySelector("#close-settings-button");
 const closeGameModalButton = document.querySelector("#close-game-modal-button");
@@ -99,6 +136,7 @@ const statsTagList = document.querySelector("#stats-tag-list");
 const statsCollectionList = document.querySelector("#stats-collection-list");
 const statsLeaderboardList = document.querySelector("#stats-leaderboard-list");
 const spotlightShelf = document.querySelector("#spotlight-shelf");
+const smartCollectionShelf = document.querySelector("#smart-collection-shelf");
 const librarySummary = document.querySelector("#library-summary");
 const searchInput = document.querySelector("#search-input");
 const sortInput = document.querySelector("#sort-input");
@@ -130,6 +168,11 @@ const editNotesInput = document.querySelector("#edit-notes");
 const editFavoriteInput = document.querySelector("#edit-favorite");
 const editLockStatusInput = document.querySelector("#edit-lock-status");
 const gameModalSummary = document.querySelector("#game-modal-summary");
+const gamePageHero = document.querySelector("#game-page-hero");
+const gamePageOverview = document.querySelector("#game-page-overview");
+const gamePageAchievements = document.querySelector("#game-page-achievements");
+const gamePageNotes = document.querySelector("#game-page-notes");
+const gamePageTaxonomy = document.querySelector("#game-page-taxonomy");
 
 let rawgApiKey = loadSetting(API_KEY_STORAGE);
 let steamApiKey = loadSetting(STEAM_API_KEY_STORAGE);
@@ -154,12 +197,18 @@ syncApiKeyUi();
 syncSteamUi();
 refreshUi();
 setupSteamAutoSync();
+handleRouteChange();
 window.handleQuestLogImageError = handleQuestLogImageError;
 window.handleQuestLogImageLoad = handleQuestLogImageLoad;
 
 openStatsButton.addEventListener("click", () => openModal(statsModal));
 openSettingsButton.addEventListener("click", () => openModal(settingsModal));
-openAddModalButton.addEventListener("click", () => titleInput.focus());
+openAddModalButton.addEventListener("click", () => {
+  navigateToLibrary();
+  window.setTimeout(() => titleInput.focus(), 0);
+});
+gamePageBackButton.addEventListener("click", navigateToLibrary);
+gamePageEditButton.addEventListener("click", handleOpenGamePageEdit);
 closeStatsButton.addEventListener("click", () => closeModal(statsModal));
 closeSettingsButton.addEventListener("click", () => closeModal(settingsModal));
 closeGameModalButton.addEventListener("click", () => closeModal(gameModal));
@@ -168,6 +217,7 @@ statsModal.addEventListener("click", handleModalBackdropClick);
 settingsModal.addEventListener("click", handleModalBackdropClick);
 gameModal.addEventListener("click", handleModalBackdropClick);
 document.addEventListener("keydown", handleKeydown);
+window.addEventListener("hashchange", handleRouteChange);
 window.addEventListener("scroll", () => {
   showScrollChrome(document.documentElement);
   showScrollChrome(document.body);
@@ -197,6 +247,7 @@ tagFilterList.addEventListener("click", handleTagFilterClick);
 tagFilterToggle.addEventListener("click", toggleTagFilterExpansion);
 gameList.addEventListener("click", handleGameListClick);
 spotlightShelf.addEventListener("click", handleSpotlightClick);
+smartCollectionShelf.addEventListener("click", handleSmartCollectionClick);
 viewToggleButtons.forEach((button) => button.addEventListener("click", handleViewChange));
 themeToggleButtons.forEach((button) => button.addEventListener("click", handleThemeChange));
 backgroundToggleButtons.forEach((button) => button.addEventListener("click", handleBackgroundChange));
@@ -211,12 +262,14 @@ function refreshUi() {
   renderDashboard();
   renderStatsModal();
   renderSpotlightShelf();
+  renderSmartCollections();
   renderFilterControls();
   renderGames();
   syncViewButtons();
   syncThemeButtons();
   syncBackgroundButtons();
   syncSelectionModeUi();
+  renderGamePage();
 }
 
 function renderDashboard() {
@@ -267,7 +320,7 @@ function renderStatsModal() {
 
 function renderFilterControls() {
   renderSelectOptions(filterPlatformInput, getAvailablePlatforms(), "All Platforms");
-  renderSelectOptions(filterCollectionInput, getAvailableCollections(), "All Collections");
+  renderCollectionOptions();
   renderTagFilters(getAvailableTags());
   favoritesFilterButton.classList.toggle("is-active", favoritesOnly);
   favoritesFilterButton.setAttribute("aria-pressed", String(favoritesOnly));
@@ -280,6 +333,29 @@ function renderSelectOptions(selectElement, values, allLabel) {
     ${values.map((value) => `<option value="${escapeAttribute(value)}">${escapeHtml(value)}</option>`).join("")}
   `;
   selectElement.value = values.includes(currentValue) ? currentValue : "All";
+}
+
+function renderCollectionOptions() {
+  const currentValue = filterCollectionInput.value || "All";
+  const standardCollections = getAvailableCollections();
+  const smartCollections = getAvailableSmartCollections();
+
+  filterCollectionInput.innerHTML = `
+    <option value="All">All Collections</option>
+    ${smartCollections.map((collection) => `
+      <option value="${escapeAttribute(buildSmartCollectionValue(collection.id))}">
+        ${escapeHtml(`Smart: ${collection.label}`)}
+      </option>
+    `).join("")}
+    ${standardCollections.map((value) => `<option value="${escapeAttribute(value)}">${escapeHtml(value)}</option>`).join("")}
+  `;
+
+  const nextValue = [
+    "All",
+    ...smartCollections.map((collection) => buildSmartCollectionValue(collection.id)),
+    ...standardCollections
+  ].includes(currentValue) ? currentValue : "All";
+  filterCollectionInput.value = nextValue;
 }
 
 function renderTagFilters(tags) {
@@ -417,6 +493,44 @@ function renderSpotlightShelf() {
   `).join("");
 }
 
+function renderSmartCollections() {
+  const collections = getAvailableSmartCollections();
+
+  if (collections.length === 0) {
+    smartCollectionShelf.innerHTML = `
+      <article class="spotlight-empty smart-collection-empty">
+        <p class="spotlight-empty__title">Smart collections will show up as your library grows.</p>
+        <p class="helper-text">Import Steam activity, mark favorites, and track more games to unlock dynamic shelves here.</p>
+      </article>
+    `;
+    return;
+  }
+
+  smartCollectionShelf.innerHTML = collections.map((collection) => {
+    const isActive = filterCollectionInput.value === buildSmartCollectionValue(collection.id);
+    const previewTitles = collection.games.slice(0, 2).map((game) => game.title).join(" • ");
+
+    return `
+      <button
+        type="button"
+        class="smart-collection-option ${isActive ? "is-active" : ""}"
+        data-smart-collection-id="${escapeAttribute(collection.id)}"
+        aria-pressed="${String(isActive)}"
+      >
+        <div class="smart-collection-option__header">
+          <div>
+            <p class="spotlight-card__eyebrow">Smart Shelf</p>
+            <h3 class="spotlight-card__title">${escapeHtml(collection.label)}</h3>
+          </div>
+          <span class="pill pill--neutral">${escapeHtml(`${collection.games.length} game${collection.games.length === 1 ? "" : "s"}`)}</span>
+        </div>
+        <p class="spotlight-card__summary">${escapeHtml(collection.description)}</p>
+        <p class="smart-collection-option__preview">${escapeHtml(previewTitles || "Open this smart shelf to see matching games.")}</p>
+      </button>
+    `;
+  }).join("");
+}
+
 function getFilteredGames() {
   const searchQuery = searchInput.value.trim().toLowerCase();
   const selectedStatus = filterStatusInput.value;
@@ -438,13 +552,26 @@ function getFilteredGames() {
       const matchesSearch = !searchQuery || haystack.includes(searchQuery);
       const matchesStatus = selectedStatus === "All" || game.status === selectedStatus;
       const matchesPlatform = selectedPlatform === "All" || game.platforms.includes(selectedPlatform);
-      const matchesCollection = selectedCollection === "All" || game.collections.includes(selectedCollection);
+      const matchesCollection = matchesCollectionFilter(game, selectedCollection);
       const matchesTags = activeTagFilters.length === 0 || activeTagFilters.every((tag) => getAllTags(game).includes(tag));
       const matchesFavorite = !favoritesOnly || game.favorite;
 
       return matchesSearch && matchesStatus && matchesPlatform && matchesCollection && matchesTags && matchesFavorite;
     })
     .sort(compareGames);
+}
+
+function matchesCollectionFilter(game, selectedCollection) {
+  if (selectedCollection === "All") {
+    return true;
+  }
+
+  if (isSmartCollectionValue(selectedCollection)) {
+    const collection = getSmartCollectionByValue(selectedCollection);
+    return collection ? collection.match(game) : true;
+  }
+
+  return game.collections.includes(selectedCollection);
 }
 
 function compareGames(left, right) {
@@ -522,6 +649,7 @@ async function handleAddGame(event) {
       estimatedHours: metadata.estimatedHours,
       customTags,
       collections: metadata.suggestedCollections || [],
+      description: metadata.description || "",
       notes: "",
       favorite: false,
       statusLocked: false,
@@ -750,7 +878,7 @@ function handleGameListClick(event) {
 
   const openButton = event.target.closest("[data-open-game-id]");
   if (openButton) {
-    openGameModal(openButton.dataset.openGameId);
+    navigateToGamePage(openButton.dataset.openGameId);
   }
 }
 
@@ -763,7 +891,14 @@ function handleSpotlightClick(event) {
 
   const openButton = event.target.closest("[data-open-game-id]");
   if (openButton) {
-    openGameModal(openButton.dataset.openGameId);
+    navigateToGamePage(openButton.dataset.openGameId);
+  }
+}
+
+function handleSmartCollectionClick(event) {
+  const smartCollectionButton = event.target.closest("[data-smart-collection-id]");
+  if (smartCollectionButton) {
+    applySmartCollectionFilter(smartCollectionButton.dataset.smartCollectionId);
   }
 }
 
@@ -795,6 +930,15 @@ function openGameModal(gameId) {
   openModal(gameModal);
 }
 
+function handleOpenGamePageEdit() {
+  const game = getRouteGame();
+  if (!game) {
+    return;
+  }
+
+  openGameModal(game.id);
+}
+
 function handleSaveGameEdits(event) {
   event.preventDefault();
   const game = games.find((entry) => entry.id === editGameIdInput.value);
@@ -821,6 +965,10 @@ function handleSaveGameEdits(event) {
 function handleDeleteFromModal() {
   if (!editGameIdInput.value) {
     return;
+  }
+
+  if (getRouteGameId() === editGameIdInput.value) {
+    navigateToLibrary();
   }
 
   deleteGame(editGameIdInput.value);
@@ -946,6 +1094,219 @@ function clearFilters() {
   activeTagFilters = [];
   favoritesOnly = false;
   refreshUi();
+}
+
+function navigateToGamePage(gameId) {
+  window.location.hash = `#/game/${gameId}`;
+}
+
+function navigateToLibrary() {
+  if (!window.location.hash) {
+    handleRouteChange();
+    return;
+  }
+
+  history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+  handleRouteChange();
+}
+
+function getRouteGameId() {
+  const match = window.location.hash.match(/^#\/game\/(.+)$/);
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
+function getRouteGame() {
+  const gameId = getRouteGameId();
+  return gameId ? games.find((game) => game.id === gameId) || null : null;
+}
+
+function handleRouteChange() {
+  const game = getRouteGame();
+  const isGameRoute = Boolean(getRouteGameId()) && Boolean(game);
+
+  gamePage.classList.toggle("hidden", !isGameRoute);
+  appLayout.classList.toggle("hidden", isGameRoute);
+
+  if (isGameRoute) {
+    renderGamePage();
+    window.scrollTo({ top: 0, behavior: "auto" });
+    return;
+  }
+
+  document.title = DEFAULT_DOCUMENT_TITLE;
+
+  if (getRouteGameId()) {
+    history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+  }
+}
+
+function renderGamePage() {
+  const game = getRouteGame();
+  if (!game) {
+    return;
+  }
+
+  document.title = `${game.title} | QuestLog`;
+  gamePageHero.innerHTML = renderGamePageHero(game);
+  gamePageOverview.innerHTML = renderGamePageOverview(game);
+  gamePageAchievements.innerHTML = renderGamePageAchievements(game);
+  gamePageNotes.innerHTML = renderGamePageNotes(game);
+  gamePageTaxonomy.innerHTML = renderGamePageTaxonomy(game);
+}
+
+function renderGamePageHero(game) {
+  const heroImage = renderGamePageImage(game);
+
+  return `
+    <div class="game-page__hero-media">
+      ${heroImage}
+    </div>
+    <div class="game-page__hero-copy">
+      <p class="eyebrow">Game Page</p>
+      <h1>${escapeHtml(game.title)}</h1>
+      <div class="game-page__pills">
+        <span class="pill pill--status-${escapeAttribute(game.status)}">${escapeHtml(game.status)}</span>
+        ${game.favorite ? '<span class="pill pill--neutral">Favorite</span>' : ""}
+        ${renderNeutralPill(game.importSource === "steam" ? "Steam Import" : "Manual Entry")}
+        ${game.platforms[0] ? renderNeutralPill(game.platforms[0]) : ""}
+        ${formatReleaseYear(game.released) ? renderNeutralPill(formatReleaseYear(game.released)) : ""}
+      </div>
+      <p class="game-page__hero-text">${escapeHtml(getGamePageDescription(game))}</p>
+      <div class="button-row">
+        ${renderQuickActionButtons(game)}
+        ${renderSourceLink(game)}
+      </div>
+    </div>
+  `;
+}
+
+function renderGamePageOverview(game) {
+  return [
+    createInfoCard("Playtime", formatPlaytime(game.steamPlaytimeMinutes)),
+    createInfoCard("Last Played", formatLastPlayed(game)),
+    createInfoCard("Estimated Length", formatEstimatedLength(game.estimatedHours)),
+    createInfoCard("Achievements", formatAchievementSummary(game.steamAchievementSummary)),
+    createInfoCard("Source Note", game.matchNote || "No extra metadata note saved."),
+    createInfoCard("Last Updated", formatUpdatedTimestamp(game.updatedAt))
+  ].join("");
+}
+
+function renderGamePageAchievements(game) {
+  const summary = game.steamAchievementSummary;
+
+  if (!summary) {
+    return `
+      <div class="info-card">
+        <strong>No achievement data yet.</strong><br>
+        Steam achievement progress will appear here after a Steam import or sync pulls it in.
+      </div>
+    `;
+  }
+
+  return `
+    <div class="info-card">
+      <strong>${escapeHtml(`${summary.unlockedCount}/${summary.totalCount || 0} unlocked`)}</strong><br>
+      Completion rate: ${escapeHtml(formatPercent((summary.completionRate || 0) * 100))}<br>
+      Completion achievement: ${escapeHtml(summary.completionAchievementName || "None detected")}<br>
+      ${escapeHtml(summary.hasCompletionAchievement ? "QuestLog detected a likely completion-style achievement." : "QuestLog did not detect a completion-style achievement yet.")}
+    </div>
+  `;
+}
+
+function renderGamePageNotes(game) {
+  return `
+    <div class="info-card game-page__notes-card">
+      ${game.notes
+        ? escapeHtml(game.notes).replace(/\n/g, "<br>")
+        : "No custom notes yet. Use Edit Game to add a personal reminder, progress note, or goal."}
+    </div>
+  `;
+}
+
+function renderGamePageTaxonomy(game) {
+  const collections = game.collections.length > 0
+    ? game.collections.map((collection) => `<span class="pill pill--neutral">${escapeHtml(collection)}</span>`).join("")
+    : '<span class="helper-text">No collections yet.</span>';
+  const tags = getAllTags(game).length > 0
+    ? getAllTags(game).map((tag) => `<span class="pill pill--tag">${escapeHtml(tag)}</span>`).join("")
+    : '<span class="helper-text">No tags yet.</span>';
+
+  return `
+    <div class="game-page__taxonomy-group">
+      <h3>Collections</h3>
+      <div class="game-page__pill-row">${collections}</div>
+    </div>
+    <div class="game-page__taxonomy-group">
+      <h3>Tags</h3>
+      <div class="game-page__pill-row">${tags}</div>
+    </div>
+  `;
+}
+
+function createInfoCard(label, value) {
+  return `
+    <div class="info-card">
+      <strong>${escapeHtml(label)}</strong><br>
+      ${escapeHtml(value)}
+    </div>
+  `;
+}
+
+function renderGamePageImage(game) {
+  if (game.coverImage || game.backupCoverImage) {
+    const imageSource = getGamePageImageSource(game);
+    const fallbackSource = getGamePageImageFallbackSource(game, imageSource);
+    return `<img class="game-page__image" src="${escapeAttribute(imageSource)}" alt="${escapeAttribute(game.title)} cover art" data-game-id="${escapeAttribute(game.id)}" data-fallback-src="${escapeAttribute(fallbackSource)}" data-fallback-applied="false" onload="window.handleQuestLogImageLoad && window.handleQuestLogImageLoad(this)" onerror="window.handleQuestLogImageError && window.handleQuestLogImageError(this)">`;
+  }
+
+  return `<div class="game-page__image game-page__image--placeholder" aria-hidden="true"></div>`;
+}
+
+function getGamePageImageSource(game) {
+  if (game.importSource !== "steam" || !game.steamAppId) {
+    return game.coverImage || game.backupCoverImage || "";
+  }
+
+  if (game.coverImageBroken) {
+    return game.backupCoverImage || buildSteamHeaderImage(game.steamAppId) || game.coverImage || "";
+  }
+
+  return game.backupCoverImage || game.coverImage || buildSteamHeaderImage(game.steamAppId) || "";
+}
+
+function getGamePageImageFallbackSource(game, currentSource) {
+  if (game.importSource !== "steam") {
+    return game.backupCoverImage && game.backupCoverImage !== currentSource
+      ? game.backupCoverImage
+      : "";
+  }
+
+  const candidates = [
+    game.backupCoverImage,
+    game.coverImage,
+    buildSteamHeaderImage(game.steamAppId),
+    buildSteamGridBanner(game.steamAppId)
+  ].filter(Boolean);
+
+  return candidates.find((candidate) => candidate !== currentSource) || "";
+}
+
+function getGamePageDescription(game) {
+  if (game.description) {
+    return truncateText(game.description, 320);
+  }
+
+  if (game.matchNote) {
+    return truncateText(game.matchNote, 220);
+  }
+
+  return `${formatPlaytime(game.steamPlaytimeMinutes)} • ${formatPlatformList(game.platforms)} • ${formatCollectionsSummary(game.collections)}`;
+}
+
+function applySmartCollectionFilter(collectionId) {
+  filterCollectionInput.value = buildSmartCollectionValue(collectionId);
+  refreshUi();
+  gameList.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function toggleFavoritesFilter() {
@@ -1264,6 +1625,7 @@ function normalizeGame(game) {
     estimatedHours: clampEstimatedHours(game.estimatedHours),
     customTags: ensureStringArray(game.customTags),
     collections: ensureStringArray(game.collections),
+    description: normalizeImportedDescription(game.description),
     notes: typeof game.notes === "string" ? game.notes : "",
     favorite: Boolean(game.favorite),
     statusLocked: Boolean(game.statusLocked),
@@ -1371,6 +1733,40 @@ function getAvailableCollections() {
 
 function getAvailableTags() {
   return sortAlpha([...new Set(games.flatMap((game) => getAllTags(game)))]);
+}
+
+function getAvailableSmartCollections() {
+  return SMART_COLLECTIONS
+    .map((collection) => ({
+      ...collection,
+      games: getSmartCollectionGames(collection)
+    }))
+    .filter((collection) => collection.games.length > 0);
+}
+
+function getSmartCollectionGames(collection) {
+  return [...games]
+    .filter((game) => collection.match(game))
+    .sort(compareSmartCollectionGames);
+}
+
+function compareSmartCollectionGames(left, right) {
+  return compareDateStrings(getSpotlightTimestamp(right), getSpotlightTimestamp(left))
+    || (right.steamPlaytimeMinutes || 0) - (left.steamPlaytimeMinutes || 0)
+    || left.title.localeCompare(right.title);
+}
+
+function buildSmartCollectionValue(collectionId) {
+  return `smart:${collectionId}`;
+}
+
+function isSmartCollectionValue(value) {
+  return String(value || "").startsWith("smart:");
+}
+
+function getSmartCollectionByValue(value) {
+  const collectionId = String(value || "").replace(/^smart:/, "");
+  return SMART_COLLECTIONS.find((collection) => collection.id === collectionId) || null;
 }
 
 function buildLibraryStats() {
@@ -1601,6 +1997,7 @@ function applyManualAddToExistingGame(existingGame, { title, status, customTags,
   existingGame.rawgTags = ensureStringArray([...existingGame.rawgTags, ...(metadata?.rawgTags || [])]);
   existingGame.customTags = ensureStringArray([...existingGame.customTags, ...customTags]);
   existingGame.collections = ensureStringArray([...existingGame.collections, ...(metadata?.suggestedCollections || [])]);
+  existingGame.description = existingGame.description || metadata?.description || "";
   existingGame.estimatedHours = existingGame.estimatedHours || metadata?.estimatedHours || 0;
   existingGame.rawgSlug = existingGame.rawgSlug || metadata?.rawgSlug || "";
   existingGame.rawgUrl = existingGame.rawgUrl || metadata?.rawgUrl || buildSteamStoreUrl(existingGame.steamAppId);
@@ -1650,6 +2047,7 @@ async function repairGameMetadata(game) {
     platforms: metadata.platforms?.length ? metadata.platforms : game.platforms,
     rawgTags: metadata.rawgTags?.length ? metadata.rawgTags : game.rawgTags,
     collections: ensureStringArray([...game.collections, ...(metadata.suggestedCollections || [])]),
+    description: metadata.description || game.description,
     estimatedHours: metadata.estimatedHours || game.estimatedHours,
     rating: metadata.metacritic || game.rating,
     rawgSlug: metadata.rawgSlug || game.rawgSlug,
@@ -1759,7 +2157,26 @@ function renderLibrarySummary(filteredGames) {
     parts.push(`Steam synced ${formatRelativeTime(steamLastSyncedAt)}`);
   }
 
+  const activeCollection = getActiveCollectionLabel();
+  if (activeCollection) {
+    parts.push(activeCollection);
+  }
+
   librarySummary.textContent = parts.join(" | ");
+}
+
+function getActiveCollectionLabel() {
+  const selectedCollection = filterCollectionInput.value;
+  if (!selectedCollection || selectedCollection === "All") {
+    return "";
+  }
+
+  if (isSmartCollectionValue(selectedCollection)) {
+    const collection = getSmartCollectionByValue(selectedCollection);
+    return collection ? `Smart shelf: ${collection.label}` : "";
+  }
+
+  return `Collection: ${selectedCollection}`;
 }
 
 function getSpotlightGames() {
@@ -1826,6 +2243,7 @@ async function fetchGameMetadata(title) {
       title,
       coverImage: "",
       backupCoverImage: "",
+      description: "",
       genres: [],
       platforms: [],
       rawgTags: [],
@@ -1859,6 +2277,7 @@ async function fetchGameMetadata(title) {
         title,
         coverImage: "",
         backupCoverImage: "",
+        description: "",
         genres: [],
         platforms: [],
         rawgTags: [],
@@ -1878,6 +2297,7 @@ async function fetchGameMetadata(title) {
       title: bestMatch.name || title,
       coverImage: bestMatch.background_image || details?.background_image || "",
       backupCoverImage: getRawgBackupCoverImage(bestMatch, details),
+      description: "",
       released: bestMatch.released || "",
       genres: Array.isArray(bestMatch.genres) ? bestMatch.genres.map((genre) => genre.name) : [],
       platforms: extractPlatformNames(bestMatch.platforms),
@@ -1899,6 +2319,7 @@ async function fetchGameMetadata(title) {
       title,
       coverImage: "",
       backupCoverImage: "",
+      description: "",
       genres: [],
       platforms: [],
       rawgTags: [],
@@ -2089,6 +2510,7 @@ async function importSteamGame(game) {
     estimatedHours: metadata?.estimatedHours || 0,
     customTags: [],
     collections: metadata?.suggestedCollections || [],
+    description: metadata?.description || "",
     notes: "",
     favorite: false,
     statusLocked: false,
@@ -2150,6 +2572,7 @@ function mergeSteamMetadata(primaryMetadata, fallbackMetadata) {
     platforms: primaryMetadata.platforms?.length ? primaryMetadata.platforms : fallbackMetadata.platforms,
     rawgTags: primaryMetadata.rawgTags?.length ? primaryMetadata.rawgTags : fallbackMetadata.rawgTags,
     estimatedHours: primaryMetadata.estimatedHours || fallbackMetadata.estimatedHours,
+    description: primaryMetadata.description || fallbackMetadata.description || "",
     rawgSlug: primaryMetadata.rawgSlug || fallbackMetadata.rawgSlug,
     rawgUrl: primaryMetadata.rawgUrl || fallbackMetadata.rawgUrl,
     metacritic: primaryMetadata.metacritic || fallbackMetadata.metacritic,
@@ -2181,6 +2604,7 @@ function buildSteamStoreMetadata(storeData, appId) {
     title: storeData.name || `Steam App ${appId}`,
     coverImage: primaryCover,
     backupCoverImage: backupCover,
+    description: normalizeImportedDescription(storeData.short_description || storeData.detailed_description || ""),
     released: normalizeSteamStoreReleaseDate(storeData.release_date?.date),
     genres: extractSteamStoreGenres(storeData.genres),
     platforms: ["Steam"],
@@ -2248,6 +2672,7 @@ function hasReusableSteamMetadata(game) {
   }
 
   return Boolean(
+    game.description ||
     game.coverImage ||
     game.backupCoverImage ||
     game.released ||
@@ -2267,6 +2692,7 @@ function getReusableSteamMetadata(game) {
     title: game.title,
     coverImage: game.coverImage,
     backupCoverImage: game.backupCoverImage,
+    description: game.description,
     released: game.released,
     genres: game.genres,
     platforms: game.platforms,
@@ -2431,6 +2857,7 @@ function mergeImportedGames(importedGames) {
       rating: existingGame.rating || importedGame.rating,
       customTags: existingGame.customTags,
       collections: ensureStringArray([...existingGame.collections, ...importedGame.collections]),
+      description: existingGame.description || importedGame.description,
       notes: existingGame.notes,
       favorite: existingGame.favorite,
       statusLocked: existingGame.statusLocked,
@@ -2697,6 +3124,13 @@ function replaceBrokenImageWithPlaceholder(imageElement) {
 
   imageElement.remove();
 
+  if (artContainer.classList.contains("game-page__hero-media")) {
+    if (!artContainer.querySelector(".game-page__image--placeholder")) {
+      artContainer.insertAdjacentHTML("afterbegin", '<div class="game-page__image game-page__image--placeholder" aria-hidden="true"></div>');
+    }
+    return;
+  }
+
   if (!artContainer.querySelector(".game-item__placeholder")) {
     artContainer.insertAdjacentHTML("afterbegin", '<div class="game-item__placeholder" aria-hidden="true"></div>');
   }
@@ -2949,6 +3383,41 @@ function formatAgeSince(value) {
 
   const years = Math.floor(months / 12);
   return `${years} year${years === 1 ? "" : "s"}`;
+}
+
+function normalizeImportedDescription(value) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  const plainText = value
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<[^>]+>/g, " ");
+
+  const decoded = decodeHtmlEntities(plainText)
+    .replace(/\r/g, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+
+  return decoded;
+}
+
+function decodeHtmlEntities(value) {
+  const textarea = document.createElement("textarea");
+  textarea.innerHTML = value;
+  return textarea.value;
+}
+
+function isDateInCurrentYear(value) {
+  if (!value) {
+    return false;
+  }
+
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) && date.getFullYear() === new Date().getFullYear();
 }
 
 function getMostRecentUpdatedAt() {
