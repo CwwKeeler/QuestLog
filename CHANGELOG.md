@@ -2,6 +2,26 @@
 
 All notable QuestLog release notes should be recorded here and mirrored in the matching GitHub Release entry.
 
+## [v1.0.5] - 2026-04-24
+
+### Highlights
+
+- Shipped a quick visual hotfix for readability and consistency after `v1.0.4`.
+- Focused this patch on the desktop UI issues that were most noticeable in the live build.
+
+### Fixed
+
+- Light mode now uses a cleaner, more readable hero treatment instead of letting dark text and low-contrast controls break the top of the page.
+- Secondary buttons, danger buttons, and chip controls now read more clearly in the light theme.
+- Game cards now reserve space more consistently for headings, metadata, summaries, and actions so neighboring cards stop feeling visually uneven.
+- Long titles, subtitles, and summary lines now clamp more predictably instead of creating mismatched card heights and awkward text flow.
+
+### Notes
+
+- This hotfix is focused on the UI consistency pass and ships a refreshed Windows installer build.
+- The generated Windows installer for this version should be `QuestLog-Setup-1.0.5.exe`.
+- A GitHub Release entry should use this changelog section as its release notes.
+
 ## [v1.0.4] - 2026-04-24
 
 ### Highlights
