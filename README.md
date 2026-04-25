@@ -24,10 +24,6 @@ QuestLog is a desktop-friendly game library tracker for managing your backlog, a
 - Steam auto-sync interval options: `Off`, `5 min`, `10 min`, `30 min`, `1 hour`
 - Scenic backgrounds that stay pinned near the top of the page and fade into the app background on scroll
 
-## Demo
-
-- [Watch the QuestLog demo video](https://youtu.be/6S6tBhGhd-k)
-
 ## Quick Start
 
 ### Run in the browser
